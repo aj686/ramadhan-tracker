@@ -8,6 +8,9 @@
     "scheme": "ramadantracker",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
+    "experiment" : {
+      "newArchitecture": true
+    },
     "ios": {
       "supportsTablet": true
     },
@@ -19,7 +22,8 @@
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
       "edgeToEdgeEnabled": true,
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "package": "com.aj686.ramadantracker"
     },
     "web": {
       "output": "static",
@@ -43,6 +47,12 @@
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "7fc94f0a-95c3-458a-933c-1f4f230a1e7d"
+      }
     }
   }
 }
