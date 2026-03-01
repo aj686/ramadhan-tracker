@@ -6,6 +6,7 @@ import { Rewards, UpdateRewardsInput } from '@/types';
 
 const DEFAULT_FULL_DAY_AMOUNT = 5;
 const DEFAULT_HALF_DAY_AMOUNT = 2.5;
+const DEFAULT_REWARD_TYPE = 'money' as const;
 
 export const useRewards = () => {
   const { user } = useAuthStore();
@@ -33,6 +34,7 @@ export const useRewards = () => {
               parent_id: user.id,
               full_day_amount: DEFAULT_FULL_DAY_AMOUNT,
               half_day_amount: DEFAULT_HALF_DAY_AMOUNT,
+              reward_type: DEFAULT_REWARD_TYPE,
             })
             .select()
             .single();
@@ -44,7 +46,12 @@ export const useRewards = () => {
         throw fetchError;
       }
 
-      setRewards(data as Rewards);
+      // Normalise legacy rows that don't have reward_type yet
+      const normalised: Rewards = {
+        ...(data as Rewards),
+        reward_type: (data as any).reward_type ?? DEFAULT_REWARD_TYPE,
+      };
+      setRewards(normalised);
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to fetch rewards';
       setError(message);
@@ -67,6 +74,9 @@ export const useRewards = () => {
             parent_id: user.id,
             full_day_amount: input.full_day_amount,
             half_day_amount: input.half_day_amount,
+            reward_type: input.reward_type,
+            custom_reward_full: input.custom_reward_full ?? null,
+            custom_reward_half: input.custom_reward_half ?? null,
           },
           {
             onConflict: 'parent_id',

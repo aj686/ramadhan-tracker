@@ -4,6 +4,7 @@ import { useAuthStore } from '@/store/auth-store';
 import { useChildrenStore } from '@/store/children-store';
 import { useFastingStore } from '@/store/fasting-store';
 import { useRewardsStore } from '@/store/rewards-store';
+import { usePrayerStore } from '@/store/prayer-store';
 
 export const useAuth = () => {
   const { user, isLoading, isAuthenticated, setUser, setLoading, logout: storeLogout } = useAuthStore();
@@ -105,13 +106,15 @@ export const useAuth = () => {
   const logout = useCallback(async () => {
     try {
       await supabase.auth.signOut();
+    } catch (error) {
+      console.error('Logout error:', error);
+    } finally {
+      // Always clear local state even if remote sign-out fails
       storeLogout();
-      // Clear all stores
       useChildrenStore.getState().clearChildren();
       useFastingStore.getState().clearLogs();
       useRewardsStore.getState().clearRewards();
-    } catch (error) {
-      console.error('Logout error:', error);
+      usePrayerStore.getState().clearLogs();
     }
   }, [storeLogout]);
 

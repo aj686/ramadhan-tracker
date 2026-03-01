@@ -4,9 +4,8 @@ import { useFastingStore } from '@/store/fasting-store';
 import { FastingLog, FastingStatus, ChildStats } from '@/types';
 import { useRewardsStore } from '@/store/rewards-store';
 
-// Ramadan 2025 dates (March 1 - March 30, 2025)
-// Adjust these dates based on the actual Ramadan dates for your region
-export const RAMADAN_START = '2025-03-01';
+// Ramadan 2026 / 1447 AH dates (February 18 - March 19, 2026)
+export const RAMADAN_START = '2026-02-18';
 export const RAMADAN_DAYS = 30;
 
 export const getRamadanDates = (): string[] => {

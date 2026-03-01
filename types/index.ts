@@ -23,12 +23,33 @@ export interface FastingLog {
   status: FastingStatus;
 }
 
+// Reward type
+export type RewardType = 'money' | 'custom';
+
 // Rewards settings
 export interface Rewards {
   id: string;
   parent_id: string;
   full_day_amount: number;
   half_day_amount: number;
+  reward_type: RewardType;
+  custom_reward_full?: string | null;
+  custom_reward_half?: string | null;
+}
+
+// Prayer names (5 daily prayers)
+export type PrayerName = 'fajr' | 'dhuhr' | 'asr' | 'maghrib' | 'isha';
+
+// Prayer log entry
+export interface PrayerLog {
+  id: string;
+  child_id: string;
+  date: string; // YYYY-MM-DD format
+  fajr: boolean;
+  dhuhr: boolean;
+  asr: boolean;
+  maghrib: boolean;
+  isha: boolean;
 }
 
 // For creating/updating children
@@ -51,6 +72,9 @@ export interface UpsertFastingLogInput {
 export interface UpdateRewardsInput {
   full_day_amount: number;
   half_day_amount: number;
+  reward_type: RewardType;
+  custom_reward_full?: string;
+  custom_reward_half?: string;
 }
 
 // Calculated child stats

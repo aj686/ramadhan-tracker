@@ -26,7 +26,7 @@
       "package": "com.aj686.ramadantracker"
     },
     "web": {
-      "output": "static",
+      "output": "single",
       "favicon": "./assets/images/favicon.png"
     },
     "plugins": [
