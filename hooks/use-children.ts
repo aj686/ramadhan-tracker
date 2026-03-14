@@ -2,12 +2,15 @@ import { useCallback } from 'react';
 import { supabase } from '@/services/supabase';
 import { useChildrenStore } from '@/store/children-store';
 import { useAuthStore } from '@/store/auth-store';
+import { useSubscriptionStore } from '@/store/subscription-store';
 import { Child, CreateChildInput, UpdateChildInput } from '@/types';
 
-const MAX_CHILDREN = 3;
+// Free tier: 2 children. Premium: unlimited.
+const MAX_CHILDREN_FREE = 2;
 
 export const useChildren = () => {
   const { user } = useAuthStore();
+  const { isPremium } = useSubscriptionStore();
   const {
     children,
     isLoading,
@@ -19,6 +22,8 @@ export const useChildren = () => {
     setLoading,
     setError,
   } = useChildrenStore();
+
+  const maxChildren = isPremium ? Infinity : MAX_CHILDREN_FREE;
 
   const fetchChildren = useCallback(async () => {
     if (!user) return;
@@ -47,8 +52,13 @@ export const useChildren = () => {
   const createChild = useCallback(async (input: CreateChildInput) => {
     if (!user) return { success: false, error: 'Not authenticated' };
 
-    if (children.length >= MAX_CHILDREN) {
-      return { success: false, error: `Maximum ${MAX_CHILDREN} children allowed` };
+    if (children.length >= maxChildren) {
+      return {
+        success: false,
+        error: isPremium
+          ? 'Failed to add child'
+          : `Free plan allows up to ${MAX_CHILDREN_FREE} children. Upgrade for unlimited.`,
+      };
     }
 
     setLoading(true);
@@ -75,7 +85,7 @@ export const useChildren = () => {
     } finally {
       setLoading(false);
     }
-  }, [user, children.length, addChild, setLoading, setError]);
+  }, [user, children.length, maxChildren, isPremium, addChild, setLoading, setError]);
 
   const editChild = useCallback(async (id: string, input: UpdateChildInput) => {
     if (!user) return { success: false, error: 'Not authenticated' };
@@ -131,7 +141,7 @@ export const useChildren = () => {
     }
   }, [user, removeChild, setLoading, setError]);
 
-  const canAddChild = children.length < MAX_CHILDREN;
+  const canAddChild = children.length < maxChildren;
 
   return {
     children,
@@ -142,6 +152,7 @@ export const useChildren = () => {
     editChild,
     deleteChild,
     canAddChild,
-    maxChildren: MAX_CHILDREN,
+    maxChildren,
+    isPremium,
   };
 };

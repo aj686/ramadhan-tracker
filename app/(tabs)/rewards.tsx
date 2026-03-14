@@ -13,6 +13,7 @@ import {
   Modal,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
+import { BlurView } from 'expo-blur';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '@/hooks/use-theme';
@@ -32,20 +33,13 @@ export default function RewardsScreen() {
 
   const [rewardType, setRewardType] = useState<RewardType>('money');
   const [showDropdown, setShowDropdown] = useState(false);
-
-  // Money type state
   const [fullAmount, setFullAmount] = useState('');
   const [halfAmount, setHalfAmount] = useState('');
-
-  // Custom type state
   const [customFull, setCustomFull] = useState('');
   const [customHalf, setCustomHalf] = useState('');
-
   const [isSaving, setIsSaving] = useState(false);
 
-  useEffect(() => {
-    fetchRewards();
-  }, [fetchRewards]);
+  useEffect(() => { fetchRewards(); }, [fetchRewards]);
 
   useEffect(() => {
     if (rewards) {
@@ -63,39 +57,17 @@ export default function RewardsScreen() {
     if (rewardType === 'money') {
       const full = parseFloat(fullAmount);
       const half = parseFloat(halfAmount);
-      if (isNaN(full) || full < 0) {
-        Alert.alert('Error', 'Please enter a valid amount for full day');
-        return;
-      }
-      if (isNaN(half) || half < 0) {
-        Alert.alert('Error', 'Please enter a valid amount for half day');
-        return;
-      }
-      if (half > full) {
-        Alert.alert('Error', 'Half day amount cannot exceed full day amount');
-        return;
-      }
+      if (isNaN(full) || full < 0) { Alert.alert('Error', 'Please enter a valid amount for full day'); return; }
+      if (isNaN(half) || half < 0) { Alert.alert('Error', 'Please enter a valid amount for half day'); return; }
+      if (half > full) { Alert.alert('Error', 'Half day amount cannot exceed full day amount'); return; }
       setIsSaving(true);
-      const result = await updateRewards({
-        full_day_amount: full,
-        half_day_amount: half,
-        reward_type: 'money',
-      });
+      const result = await updateRewards({ full_day_amount: full, half_day_amount: half, reward_type: 'money' });
       setIsSaving(false);
-      if (result?.success) {
-        Alert.alert('Saved', 'Reward settings updated successfully');
-      } else {
-        Alert.alert('Error', result?.error || 'Failed to save rewards');
-      }
+      if (result?.success) Alert.alert('Saved', 'Reward settings updated');
+      else Alert.alert('Error', result?.error || 'Failed to save');
     } else {
-      if (!customFull.trim()) {
-        Alert.alert('Error', 'Please describe the full day reward');
-        return;
-      }
-      if (!customHalf.trim()) {
-        Alert.alert('Error', 'Please describe the half day reward');
-        return;
-      }
+      if (!customFull.trim()) { Alert.alert('Error', 'Please describe the full day reward'); return; }
+      if (!customHalf.trim()) { Alert.alert('Error', 'Please describe the half day reward'); return; }
       setIsSaving(true);
       const result = await updateRewards({
         full_day_amount: rewards?.full_day_amount ?? defaultFullAmount,
@@ -105,11 +77,8 @@ export default function RewardsScreen() {
         custom_reward_half: customHalf.trim(),
       });
       setIsSaving(false);
-      if (result?.success) {
-        Alert.alert('Saved', 'Reward settings updated successfully');
-      } else {
-        Alert.alert('Error', result?.error || 'Failed to save rewards');
-      }
+      if (result?.success) Alert.alert('Saved', 'Reward settings updated');
+      else Alert.alert('Error', result?.error || 'Failed to save');
     }
   };
 
@@ -117,16 +86,12 @@ export default function RewardsScreen() {
     <View style={styles.container}>
       <LinearGradient
         colors={isDark
-          ? ['#0A1F13', '#0F2D1B', '#0A1F13']
-          : ['#ECFDF5', '#D1FAE5', '#A7F3D0']
-        }
+          ? ['#0F172A', '#1E293B', '#0F172A']
+          : ['#F0FFF4', '#FFFFFF', '#FFF8F0']}
         style={StyleSheet.absoluteFill}
       />
 
-      <KeyboardAvoidingView
-        style={styles.flex}
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      >
+      <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
         <ScrollView
           contentContainerStyle={[
             styles.content,
@@ -137,10 +102,20 @@ export default function RewardsScreen() {
         >
           {/* Header */}
           <View style={styles.header}>
-            <Ionicons name="gift" size={36} color={colors.primary} />
+            <View style={[styles.headerIcon, { backgroundColor: colors.rewardMuted }]}>
+              <Ionicons name="gift" size={28} color={colors.rewardColor} />
+            </View>
             <Text style={[styles.title, { color: colors.text }]}>Reward Settings</Text>
             <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
-              Choose how your children earn rewards for fasting
+              Set how your children earn rewards for fasting
+            </Text>
+          </View>
+
+          {/* FREE badge notice */}
+          <View style={[styles.freeBadgeRow, { backgroundColor: colors.primaryMuted, borderColor: colors.primary }]}>
+            <Ionicons name="checkmark-circle" size={16} color={colors.primary} />
+            <Text style={[styles.freeBadgeText, { color: colors.primary }]}>
+              Custom rewards are included FREE — applies to Puasa & Solat
             </Text>
           </View>
 
@@ -151,125 +126,122 @@ export default function RewardsScreen() {
               {/* Reward Type Dropdown */}
               <Text style={[styles.sectionLabel, { color: colors.textSecondary }]}>Reward Type</Text>
               <TouchableOpacity
-                style={[styles.dropdown, { backgroundColor: colors.surface, borderColor: colors.border }]}
+                style={[styles.dropdown, { borderColor: colors.glassBorder, shadowColor: colors.glassShadow }]}
                 onPress={() => setShowDropdown(true)}
                 activeOpacity={0.7}
               >
-                <View style={[styles.dropdownIcon, { backgroundColor: colors.primaryMuted }]}>
-                  <Ionicons name={selectedOption.icon as any} size={20} color={colors.primary} />
-                </View>
-                <View style={styles.dropdownText}>
-                  <Text style={[styles.dropdownLabel, { color: colors.text }]}>{selectedOption.label}</Text>
-                  <Text style={[styles.dropdownDesc, { color: colors.textMuted }]}>{selectedOption.desc}</Text>
-                </View>
-                <Ionicons name="chevron-down" size={20} color={colors.textMuted} />
+                <BlurView intensity={60} tint={isDark ? 'dark' : 'light'} style={styles.dropdownBlur}>
+                  <View style={[styles.dropdownContent, { backgroundColor: colors.glass }]}>
+                    <View style={[styles.dropdownIcon, { backgroundColor: colors.rewardMuted }]}>
+                      <Ionicons name={selectedOption.icon as any} size={20} color={colors.rewardColor} />
+                    </View>
+                    <View style={styles.dropdownText}>
+                      <Text style={[styles.dropdownLabel, { color: colors.text }]}>{selectedOption.label}</Text>
+                      <Text style={[styles.dropdownDesc, { color: colors.textMuted }]}>{selectedOption.desc}</Text>
+                    </View>
+                    <Ionicons name="chevron-down" size={20} color={colors.textMuted} />
+                  </View>
+                </BlurView>
               </TouchableOpacity>
 
               <View style={[styles.divider, { backgroundColor: colors.borderLight }]} />
 
+              {/* Form fields */}
               {rewardType === 'money' ? (
                 <>
-                  {/* Full Day - Money */}
-                  <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-                    <View style={[styles.cardIcon, { backgroundColor: colors.primaryMuted }]}>
-                      <Ionicons name="sunny" size={24} color={colors.primary} />
+                  <RewardRow
+                    icon="sunny"
+                    iconColor={colors.fastingColor}
+                    iconBg={colors.fastingMuted}
+                    label="Full Day Fast"
+                    desc="Complete fast from dawn to dusk"
+                    colors={colors}
+                    isDark={isDark}
+                  >
+                    <View style={[styles.inputContainer, { backgroundColor: colors.primaryMuted }]}>
+                      <Text style={[styles.currency, { color: colors.textMuted }]}>RM</Text>
+                      <TextInput
+                        style={[styles.input, { color: colors.text }]}
+                        placeholder={String(defaultFullAmount)}
+                        placeholderTextColor={colors.textMuted}
+                        value={fullAmount}
+                        onChangeText={setFullAmount}
+                        keyboardType="decimal-pad"
+                      />
                     </View>
-                    <View style={styles.cardContent}>
-                      <Text style={[styles.cardLabel, { color: colors.text }]}>Full Day Fast</Text>
-                      <Text style={[styles.cardDesc, { color: colors.textSecondary }]}>
-                        Complete fasting from dawn to dusk
-                      </Text>
-                    </View>
-                  </View>
-                  <View style={[styles.inputContainer, { backgroundColor: colors.primaryMuted }]}>
-                    <Text style={[styles.currency, { color: colors.textMuted }]}>RM</Text>
-                    <TextInput
-                      style={[styles.input, { color: colors.text }]}
-                      placeholder={String(defaultFullAmount)}
-                      placeholderTextColor={colors.textMuted}
-                      value={fullAmount}
-                      onChangeText={setFullAmount}
-                      keyboardType="decimal-pad"
-                    />
-                  </View>
+                  </RewardRow>
 
                   <View style={[styles.divider, { backgroundColor: colors.borderLight }]} />
 
-                  {/* Half Day - Money */}
-                  <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-                    <View style={[styles.cardIcon, { backgroundColor: 'rgba(245, 158, 11, 0.15)' }]}>
-                      <Ionicons name="partly-sunny" size={24} color={colors.accent} />
+                  <RewardRow
+                    icon="partly-sunny"
+                    iconColor={colors.rewardColor}
+                    iconBg={colors.rewardMuted}
+                    label="Half Day Fast"
+                    desc="Partial fasting effort"
+                    colors={colors}
+                    isDark={isDark}
+                  >
+                    <View style={[styles.inputContainer, { backgroundColor: colors.primaryMuted }]}>
+                      <Text style={[styles.currency, { color: colors.textMuted }]}>RM</Text>
+                      <TextInput
+                        style={[styles.input, { color: colors.text }]}
+                        placeholder={String(defaultHalfAmount)}
+                        placeholderTextColor={colors.textMuted}
+                        value={halfAmount}
+                        onChangeText={setHalfAmount}
+                        keyboardType="decimal-pad"
+                      />
                     </View>
-                    <View style={styles.cardContent}>
-                      <Text style={[styles.cardLabel, { color: colors.text }]}>Half Day Fast</Text>
-                      <Text style={[styles.cardDesc, { color: colors.textSecondary }]}>
-                        Partial fasting effort
-                      </Text>
-                    </View>
-                  </View>
-                  <View style={[styles.inputContainer, { backgroundColor: colors.primaryMuted }]}>
-                    <Text style={[styles.currency, { color: colors.textMuted }]}>RM</Text>
-                    <TextInput
-                      style={[styles.input, { color: colors.text }]}
-                      placeholder={String(defaultHalfAmount)}
-                      placeholderTextColor={colors.textMuted}
-                      value={halfAmount}
-                      onChangeText={setHalfAmount}
-                      keyboardType="decimal-pad"
-                    />
-                  </View>
+                  </RewardRow>
                 </>
               ) : (
                 <>
-                  {/* Full Day - Custom */}
-                  <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-                    <View style={[styles.cardIcon, { backgroundColor: colors.primaryMuted }]}>
-                      <Ionicons name="sunny" size={24} color={colors.primary} />
+                  <RewardRow
+                    icon="sunny"
+                    iconColor={colors.fastingColor}
+                    iconBg={colors.fastingMuted}
+                    label="Full Day Fast Reward"
+                    desc="What does the child get?"
+                    colors={colors}
+                    isDark={isDark}
+                  >
+                    <View style={[styles.inputContainer, { backgroundColor: colors.primaryMuted }]}>
+                      <Ionicons name="gift-outline" size={18} color={colors.textMuted} />
+                      <TextInput
+                        style={[styles.input, { color: colors.text }]}
+                        placeholder="e.g. Buy a new toy"
+                        placeholderTextColor={colors.textMuted}
+                        value={customFull}
+                        onChangeText={setCustomFull}
+                        returnKeyType="next"
+                      />
                     </View>
-                    <View style={styles.cardContent}>
-                      <Text style={[styles.cardLabel, { color: colors.text }]}>Full Day Fast Reward</Text>
-                      <Text style={[styles.cardDesc, { color: colors.textSecondary }]}>
-                        What does the child get for a full day?
-                      </Text>
-                    </View>
-                  </View>
-                  <View style={[styles.inputContainer, { backgroundColor: colors.primaryMuted }]}>
-                    <Ionicons name="gift-outline" size={18} color={colors.textMuted} />
-                    <TextInput
-                      style={[styles.input, { color: colors.text }]}
-                      placeholder="e.g. Buy a new toy"
-                      placeholderTextColor={colors.textMuted}
-                      value={customFull}
-                      onChangeText={setCustomFull}
-                      returnKeyType="next"
-                    />
-                  </View>
+                  </RewardRow>
 
                   <View style={[styles.divider, { backgroundColor: colors.borderLight }]} />
 
-                  {/* Half Day - Custom */}
-                  <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-                    <View style={[styles.cardIcon, { backgroundColor: 'rgba(245, 158, 11, 0.15)' }]}>
-                      <Ionicons name="partly-sunny" size={24} color={colors.accent} />
+                  <RewardRow
+                    icon="partly-sunny"
+                    iconColor={colors.rewardColor}
+                    iconBg={colors.rewardMuted}
+                    label="Half Day Fast Reward"
+                    desc="What does the child get?"
+                    colors={colors}
+                    isDark={isDark}
+                  >
+                    <View style={[styles.inputContainer, { backgroundColor: colors.primaryMuted }]}>
+                      <Ionicons name="gift-outline" size={18} color={colors.textMuted} />
+                      <TextInput
+                        style={[styles.input, { color: colors.text }]}
+                        placeholder="e.g. Ice cream treat"
+                        placeholderTextColor={colors.textMuted}
+                        value={customHalf}
+                        onChangeText={setCustomHalf}
+                        returnKeyType="done"
+                      />
                     </View>
-                    <View style={styles.cardContent}>
-                      <Text style={[styles.cardLabel, { color: colors.text }]}>Half Day Fast Reward</Text>
-                      <Text style={[styles.cardDesc, { color: colors.textSecondary }]}>
-                        What does the child get for a half day?
-                      </Text>
-                    </View>
-                  </View>
-                  <View style={[styles.inputContainer, { backgroundColor: colors.primaryMuted }]}>
-                    <Ionicons name="gift-outline" size={18} color={colors.textMuted} />
-                    <TextInput
-                      style={[styles.input, { color: colors.text }]}
-                      placeholder="e.g. Ice cream treat"
-                      placeholderTextColor={colors.textMuted}
-                      value={customHalf}
-                      onChangeText={setCustomHalf}
-                      returnKeyType="done"
-                    />
-                  </View>
+                  </RewardRow>
                 </>
               )}
 
@@ -306,37 +278,40 @@ export default function RewardsScreen() {
           activeOpacity={1}
           onPress={() => setShowDropdown(false)}
         >
-          <View style={[styles.dropdownMenu, { backgroundColor: colors.surfaceSolid, borderColor: colors.border }]}>
-            {REWARD_TYPE_OPTIONS.map((option, index) => (
-              <TouchableOpacity
-                key={option.value}
-                style={[
-                  styles.dropdownOption,
-                  index < REWARD_TYPE_OPTIONS.length - 1 && { borderBottomWidth: 1, borderBottomColor: colors.borderLight },
-                  rewardType === option.value && { backgroundColor: colors.primaryMuted },
-                ]}
-                onPress={() => {
-                  setRewardType(option.value);
-                  setShowDropdown(false);
-                }}
-                activeOpacity={0.7}
-              >
-                <View style={[styles.dropdownIcon, { backgroundColor: rewardType === option.value ? colors.primary : colors.primaryMuted }]}>
-                  <Ionicons
-                    name={option.icon as any}
-                    size={18}
-                    color={rewardType === option.value ? '#FFFFFF' : colors.primary}
-                  />
-                </View>
-                <View style={styles.dropdownText}>
-                  <Text style={[styles.dropdownLabel, { color: colors.text }]}>{option.label}</Text>
-                  <Text style={[styles.dropdownDesc, { color: colors.textMuted }]}>{option.desc}</Text>
-                </View>
-                {rewardType === option.value && (
-                  <Ionicons name="checkmark" size={18} color={colors.primary} />
-                )}
-              </TouchableOpacity>
-            ))}
+          <View style={[styles.dropdownMenu, { borderColor: colors.glassBorder, shadowColor: colors.glassShadow }]}>
+            <BlurView intensity={80} tint={isDark ? 'dark' : 'light'} style={styles.menuBlur}>
+              <View style={{ backgroundColor: colors.surfaceSolid }}>
+                {REWARD_TYPE_OPTIONS.map((option, index) => (
+                  <TouchableOpacity
+                    key={option.value}
+                    style={[
+                      styles.dropdownOption,
+                      index < REWARD_TYPE_OPTIONS.length - 1 && { borderBottomWidth: 1, borderBottomColor: colors.borderLight },
+                      rewardType === option.value && { backgroundColor: colors.primaryMuted },
+                    ]}
+                    onPress={() => { setRewardType(option.value); setShowDropdown(false); }}
+                    activeOpacity={0.7}
+                  >
+                    <View style={[styles.optionIcon, {
+                      backgroundColor: rewardType === option.value ? colors.primary : colors.primaryMuted,
+                    }]}>
+                      <Ionicons
+                        name={option.icon as any}
+                        size={18}
+                        color={rewardType === option.value ? '#FFFFFF' : colors.primary}
+                      />
+                    </View>
+                    <View style={styles.dropdownText}>
+                      <Text style={[styles.dropdownLabel, { color: colors.text }]}>{option.label}</Text>
+                      <Text style={[styles.dropdownDesc, { color: colors.textMuted }]}>{option.desc}</Text>
+                    </View>
+                    {rewardType === option.value && (
+                      <Ionicons name="checkmark" size={18} color={colors.primary} />
+                    )}
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </BlurView>
           </View>
         </TouchableOpacity>
       </Modal>
@@ -344,43 +319,107 @@ export default function RewardsScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
+// Small helper sub-component to avoid repetition in reward rows
+function RewardRow({
+  icon, iconColor, iconBg, label, desc, children, colors, isDark,
+}: {
+  icon: any; iconColor: string; iconBg: string;
+  label: string; desc: string; children: React.ReactNode;
+  colors: any; isDark: boolean;
+}) {
+  return (
+    <View style={rowStyles.wrapper}>
+      <View style={[rowStyles.card, { borderColor: colors.glassBorder, shadowColor: colors.glassShadow }]}>
+        <BlurView intensity={60} tint={isDark ? 'dark' : 'light'} style={rowStyles.blur}>
+          <View style={[rowStyles.content, { backgroundColor: colors.glass }]}>
+            <View style={[rowStyles.icon, { backgroundColor: iconBg }]}>
+              <Ionicons name={icon} size={22} color={iconColor} />
+            </View>
+            <View style={rowStyles.text}>
+              <Text style={[rowStyles.label, { color: colors.text }]}>{label}</Text>
+              <Text style={[rowStyles.desc, { color: colors.textSecondary }]}>{desc}</Text>
+            </View>
+          </View>
+        </BlurView>
+      </View>
+      {children}
+    </View>
+  );
+}
+
+const rowStyles = StyleSheet.create({
+  wrapper: { gap: spacing.sm },
+  card: {
+    borderRadius: borderRadius.lg,
+    overflow: 'hidden',
+    borderWidth: 1,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 1,
+    shadowRadius: 6,
+    elevation: 2,
   },
-  flex: {
-    flex: 1,
-  },
+  blur: { overflow: 'hidden' },
   content: {
-    paddingHorizontal: spacing.xl,
-    flexGrow: 1,
-  },
-  header: {
-    alignItems: 'center',
-    marginBottom: spacing.xxxl,
-    gap: spacing.sm,
-  },
-  title: {
-    ...typography.title2,
-    textAlign: 'center',
-  },
-  subtitle: {
-    ...typography.subhead,
-    textAlign: 'center',
-  },
-  form: {
-    gap: spacing.md,
-  },
-  sectionLabel: {
-    ...typography.footnote,
-    marginBottom: -spacing.xs,
-  },
-  dropdown: {
     flexDirection: 'row',
     alignItems: 'center',
     padding: spacing.lg,
-    borderRadius: borderRadius.lg,
+    gap: spacing.md,
+  },
+  icon: {
+    width: 44,
+    height: 44,
+    borderRadius: borderRadius.md,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  text: { flex: 1 },
+  label: { ...typography.headline },
+  desc: { ...typography.footnote, marginTop: 2 },
+});
+
+const styles = StyleSheet.create({
+  container: { flex: 1 },
+  flex: { flex: 1 },
+  content: { paddingHorizontal: spacing.xl, flexGrow: 1 },
+  header: { alignItems: 'center', marginBottom: spacing.lg, gap: spacing.sm },
+  headerIcon: {
+    width: 64,
+    height: 64,
+    borderRadius: borderRadius.full,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: spacing.sm,
+  },
+  title: { ...typography.title2, textAlign: 'center' },
+  subtitle: { ...typography.subhead, textAlign: 'center' },
+  freeBadgeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.sm,
+    borderRadius: borderRadius.full,
     borderWidth: 1,
+    marginBottom: spacing.xl,
+    alignSelf: 'center',
+  },
+  freeBadgeText: { ...typography.caption, fontWeight: '600', flexShrink: 1 },
+  form: { gap: spacing.md },
+  sectionLabel: { ...typography.footnote, marginBottom: -spacing.xs },
+  dropdown: {
+    borderRadius: borderRadius.lg,
+    overflow: 'hidden',
+    borderWidth: 1,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 1,
+    shadowRadius: 6,
+    elevation: 3,
+  },
+  dropdownBlur: { overflow: 'hidden' },
+  dropdownContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: spacing.lg,
     gap: spacing.md,
   },
   dropdownIcon: {
@@ -390,41 +429,9 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-  dropdownText: {
-    flex: 1,
-  },
-  dropdownLabel: {
-    ...typography.headline,
-  },
-  dropdownDesc: {
-    ...typography.caption,
-    marginTop: 2,
-  },
-  card: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: spacing.lg,
-    borderRadius: borderRadius.lg,
-    borderWidth: 1,
-    gap: spacing.md,
-  },
-  cardIcon: {
-    width: 48,
-    height: 48,
-    borderRadius: borderRadius.md,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  cardContent: {
-    flex: 1,
-  },
-  cardLabel: {
-    ...typography.headline,
-  },
-  cardDesc: {
-    ...typography.footnote,
-    marginTop: 2,
-  },
+  dropdownText: { flex: 1 },
+  dropdownLabel: { ...typography.headline },
+  dropdownDesc: { ...typography.caption, marginTop: 2 },
   inputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -433,17 +440,9 @@ const styles = StyleSheet.create({
     borderRadius: borderRadius.md,
     gap: spacing.sm,
   },
-  currency: {
-    ...typography.headline,
-  },
-  input: {
-    flex: 1,
-    ...typography.title3,
-  },
-  divider: {
-    height: 1,
-    marginVertical: spacing.sm,
-  },
+  currency: { ...typography.headline },
+  input: { flex: 1, ...typography.title3 },
+  divider: { height: 1, marginVertical: spacing.sm },
   saveButton: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -453,13 +452,8 @@ const styles = StyleSheet.create({
     borderRadius: borderRadius.md,
     marginTop: spacing.lg,
   },
-  buttonDisabled: {
-    opacity: 0.6,
-  },
-  saveButtonText: {
-    ...typography.headline,
-    color: '#FFFFFF',
-  },
+  buttonDisabled: { opacity: 0.6 },
+  saveButtonText: { ...typography.headline, color: '#FFFFFF' },
   modalOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.4)',
@@ -470,13 +464,25 @@ const styles = StyleSheet.create({
   dropdownMenu: {
     width: '100%',
     borderRadius: borderRadius.xl,
-    borderWidth: 1,
     overflow: 'hidden',
+    borderWidth: 1,
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 1,
+    shadowRadius: 20,
+    elevation: 10,
   },
+  menuBlur: { overflow: 'hidden' },
   dropdownOption: {
     flexDirection: 'row',
     alignItems: 'center',
     padding: spacing.lg,
     gap: spacing.md,
+  },
+  optionIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: borderRadius.sm,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
 });

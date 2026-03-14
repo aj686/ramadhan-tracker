@@ -85,6 +85,45 @@ export interface ChildStats {
   totalReward: number;
 }
 
+// ── Phase 2 Types ───────────────────────────────────────────────────────────
+
+export type SunatType = 'isnin_khamis' | 'syawal' | 'arafah';
+
+export interface SunatLog {
+  id: string;
+  child_id: string;
+  date: string;       // YYYY-MM-DD
+  type: SunatType;
+  completed: boolean;
+}
+
+export interface QuranLog {
+  id: string;
+  child_id: string;
+  date: string;       // YYYY-MM-DD
+  pages_read: number;
+}
+
+export type DoaKey =
+  | 'doa_makan'
+  | 'doa_tidur'
+  | 'doa_masuk_rumah'
+  | 'doa_keluar_rumah'
+  | 'doa_tandas'
+  | 'doa_kenderaan';
+
+export interface DoaLog {
+  id: string;
+  child_id: string;
+  date: string;            // YYYY-MM-DD
+  doa_makan: boolean;
+  doa_tidur: boolean;
+  doa_masuk_rumah: boolean;
+  doa_keluar_rumah: boolean;
+  doa_tandas: boolean;
+  doa_kenderaan: boolean;
+}
+
 // Navigation param types
 export type RootStackParamList = {
   Login: undefined;

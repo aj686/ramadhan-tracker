@@ -35,19 +35,15 @@ export default function RegisterScreen() {
       Alert.alert('Error', 'Please enter email and password');
       return;
     }
-
     if (password !== confirmPassword) {
       Alert.alert('Error', 'Passwords do not match');
       return;
     }
-
     if (password.length < 6) {
       Alert.alert('Error', 'Password must be at least 6 characters');
       return;
     }
-
     const result = await register(email.trim(), password);
-
     if (!result.success) {
       Alert.alert('Registration Failed', result.error || 'Please try again');
     }
@@ -57,9 +53,8 @@ export default function RegisterScreen() {
     <View style={styles.container}>
       <LinearGradient
         colors={isDark
-          ? ['#0A1F13', '#0F2D1B', '#0A1F13']
-          : ['#ECFDF5', '#D1FAE5', '#A7F3D0']
-        }
+          ? ['#0F172A', '#1E293B', '#0F172A']
+          : ['#F0FFF4', '#FFFFFF', '#FFF8F0']}
         style={StyleSheet.absoluteFill}
       />
 
@@ -68,57 +63,28 @@ export default function RegisterScreen() {
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       >
         <ScrollView
-          contentContainerStyle={[
-            styles.content,
-            { paddingTop: insets.top + spacing.xxxl },
-          ]}
+          contentContainerStyle={[styles.content, { paddingTop: insets.top + spacing.xxxl }]}
           showsVerticalScrollIndicator={false}
         >
           {/* Logo */}
           <View style={styles.logoContainer}>
-            <View
-              style={[
-                styles.logoCircle,
-                { backgroundColor: colors.primaryMuted },
-              ]}
-            >
-              <Ionicons name="moon" size={48} color={colors.primary} />
+            <View style={[styles.logoCircle, { backgroundColor: colors.primaryMuted }]}>
+              <Text style={styles.logoEmoji}>🌙</Text>
             </View>
-            <Text style={[styles.title, { color: colors.text }]}>
-              Create Account
-            </Text>
+            <Text style={[styles.title, { color: colors.text }]}>Create Account</Text>
             <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
-              Start tracking your children's Ramadan
+              Start your children's Ramadan journey
             </Text>
           </View>
 
           {/* Form Card */}
-          <View
-            style={[
-              styles.formCard,
-              {
-                borderColor: colors.glassBorder,
-                shadowColor: colors.shadow,
-              },
-            ]}
-          >
-            <BlurView
-              intensity={80}
-              tint={isDark ? 'dark' : 'light'}
-              style={styles.formBlur}
-            >
+          <View style={[styles.formCard, { borderColor: colors.glassBorder, shadowColor: colors.glassShadow }]}>
+            <BlurView intensity={60} tint={isDark ? 'dark' : 'light'} style={styles.formBlur}>
               <View style={[styles.formContent, { backgroundColor: colors.glass }]}>
-                <Text style={[styles.formTitle, { color: colors.text }]}>
-                  Sign Up
-                </Text>
+                <Text style={[styles.formTitle, { color: colors.text }]}>Sign Up</Text>
 
                 <View style={styles.inputGroup}>
-                  <View
-                    style={[
-                      styles.inputContainer,
-                      { backgroundColor: colors.primaryMuted },
-                    ]}
-                  >
+                  <View style={[styles.inputContainer, { backgroundColor: colors.primaryMuted }]}>
                     <Ionicons name="mail-outline" size={20} color={colors.textMuted} />
                     <TextInput
                       style={[styles.input, { color: colors.text }]}
@@ -133,12 +99,7 @@ export default function RegisterScreen() {
                     />
                   </View>
 
-                  <View
-                    style={[
-                      styles.inputContainer,
-                      { backgroundColor: colors.primaryMuted },
-                    ]}
-                  >
+                  <View style={[styles.inputContainer, { backgroundColor: colors.primaryMuted }]}>
                     <Ionicons name="lock-closed-outline" size={20} color={colors.textMuted} />
                     <TextInput
                       style={[styles.input, { color: colors.text }]}
@@ -158,12 +119,7 @@ export default function RegisterScreen() {
                     </TouchableOpacity>
                   </View>
 
-                  <View
-                    style={[
-                      styles.inputContainer,
-                      { backgroundColor: colors.primaryMuted },
-                    ]}
-                  >
+                  <View style={[styles.inputContainer, { backgroundColor: colors.primaryMuted }]}>
                     <Ionicons name="lock-closed-outline" size={20} color={colors.textMuted} />
                     <TextInput
                       style={[styles.input, { color: colors.text }]}
@@ -178,11 +134,7 @@ export default function RegisterScreen() {
                 </View>
 
                 <TouchableOpacity
-                  style={[
-                    styles.button,
-                    { backgroundColor: colors.primary },
-                    isLoading && styles.buttonDisabled,
-                  ]}
+                  style={[styles.button, { backgroundColor: colors.primary }, isLoading && styles.buttonDisabled]}
                   onPress={handleRegister}
                   disabled={isLoading}
                   activeOpacity={0.8}
@@ -208,9 +160,7 @@ export default function RegisterScreen() {
           >
             <Text style={[styles.linkText, { color: colors.textSecondary }]}>
               Already have an account?{' '}
-              <Text style={[styles.linkBold, { color: colors.primary }]}>
-                Login
-              </Text>
+              <Text style={[styles.linkBold, { color: colors.primary }]}>Login</Text>
             </Text>
           </TouchableOpacity>
 
@@ -222,12 +172,8 @@ export default function RegisterScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-  keyboardView: {
-    flex: 1,
-  },
+  container: { flex: 1 },
+  keyboardView: { flex: 1 },
   content: {
     flexGrow: 1,
     paddingHorizontal: spacing.xl,
@@ -238,46 +184,29 @@ const styles = StyleSheet.create({
     marginBottom: spacing.xxxl,
   },
   logoCircle: {
-    width: 100,
-    height: 100,
+    width: 88,
+    height: 88,
     borderRadius: borderRadius.full,
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: spacing.lg,
   },
-  title: {
-    ...typography.largeTitle,
-    textAlign: 'center',
-  },
-  subtitle: {
-    ...typography.subhead,
-    textAlign: 'center',
-    marginTop: spacing.sm,
-  },
+  logoEmoji: { fontSize: 40 },
+  title: { ...typography.title1, textAlign: 'center' },
+  subtitle: { ...typography.subhead, textAlign: 'center', marginTop: spacing.sm },
   formCard: {
-    borderRadius: borderRadius.xl,
+    borderRadius: borderRadius.xxl,
     overflow: 'hidden',
     borderWidth: 1,
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.15,
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 1,
     shadowRadius: 16,
-    elevation: 8,
+    elevation: 6,
   },
-  formBlur: {
-    overflow: 'hidden',
-  },
-  formContent: {
-    padding: spacing.xl,
-  },
-  formTitle: {
-    ...typography.title2,
-    textAlign: 'center',
-    marginBottom: spacing.xl,
-  },
-  inputGroup: {
-    gap: spacing.md,
-    marginBottom: spacing.xl,
-  },
+  formBlur: { overflow: 'hidden' },
+  formContent: { padding: spacing.xl },
+  formTitle: { ...typography.title3, textAlign: 'center', marginBottom: spacing.xl },
+  inputGroup: { gap: spacing.md, marginBottom: spacing.xl },
   inputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -286,10 +215,7 @@ const styles = StyleSheet.create({
     borderRadius: borderRadius.md,
     gap: spacing.md,
   },
-  input: {
-    flex: 1,
-    ...typography.body,
-  },
+  input: { flex: 1, ...typography.body },
   button: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -298,21 +224,9 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.lg,
     borderRadius: borderRadius.md,
   },
-  buttonDisabled: {
-    opacity: 0.6,
-  },
-  buttonText: {
-    ...typography.headline,
-    color: '#FFFFFF',
-  },
-  linkContainer: {
-    marginTop: spacing.xl,
-    alignItems: 'center',
-  },
-  linkText: {
-    ...typography.subhead,
-  },
-  linkBold: {
-    fontWeight: '600',
-  },
+  buttonDisabled: { opacity: 0.6 },
+  buttonText: { ...typography.headline, color: '#FFFFFF' },
+  linkContainer: { marginTop: spacing.xl, alignItems: 'center' },
+  linkText: { ...typography.subhead },
+  linkBold: { fontWeight: '600' },
 });

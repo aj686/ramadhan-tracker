@@ -1,99 +1,124 @@
 export const colors = {
   light: {
-    // Primary green palette (Ramadan theme)
-    primary: '#10B981',
-    primaryLight: '#34D399',
-    primaryDark: '#059669',
-    primaryMuted: 'rgba(16, 185, 129, 0.15)',
+    // Primary green (Islamic/Ramadan)
+    primary: '#22C55E',
+    primaryLight: '#4ADE80',
+    primaryDark: '#16A34A',
+    primaryMuted: 'rgba(34, 197, 94, 0.12)',
 
-    // Accent colors
-    accent: '#F59E0B',
-    accentLight: '#FBBF24',
+    // Category colors — each tracker has its own colour identity
+    fastingColor: '#22C55E',
+    fastingMuted: 'rgba(34, 197, 94, 0.12)',
+    prayerColor: '#A855F7',
+    prayerMuted: 'rgba(168, 85, 247, 0.12)',
+    rewardColor: '#F97316',
+    rewardMuted: 'rgba(249, 115, 22, 0.12)',
+    sunatColor: '#06B6D4',
+    sunatMuted: 'rgba(6, 182, 212, 0.12)',
+    quranColor: '#3B82F6',
+    quranMuted: 'rgba(59, 130, 246, 0.12)',
+    doaColor: '#EC4899',
+    doaMuted: 'rgba(236, 72, 153, 0.12)',
 
-    // Status colors
-    success: '#10B981',
-    warning: '#F59E0B',
+    // Accent
+    accent: '#F97316',
+    accentLight: '#FB923C',
+
+    // Status
+    success: '#22C55E',
+    warning: '#F97316',
     error: '#EF4444',
 
-    // Fasting status
-    fastingFull: '#10B981',
-    fastingHalf: '#F59E0B',
+    // Fasting status pills
+    fastingFull: '#22C55E',
+    fastingHalf: '#F97316',
     fastingNone: '#EF4444',
 
-    // Background
-    background: '#F0FDF4',
-    backgroundSecondary: '#ECFDF5',
-    surface: 'rgba(255, 255, 255, 0.7)',
-    surfaceSolid: '#FFFFFF',
+    // Background — white with soft pastel gradient
+    background: '#FFFFFF',
+    backgroundSecondary: '#F8FAFF',
+    backgroundGradient: ['#F0FFF4', '#FFFFFF', '#FFF8F0'] as const,
 
-    // Glass effect
-    glass: 'rgba(255, 255, 255, 0.6)',
-    glassBorder: 'rgba(255, 255, 255, 0.8)',
+    // Glass card surface
+    surface: 'rgba(255, 255, 255, 0.85)',
+    surfaceSolid: '#FFFFFF',
+    glass: 'rgba(255, 255, 255, 0.80)',
+    glassBorder: 'rgba(255, 255, 255, 0.95)',
+    glassShadow: 'rgba(0, 0, 0, 0.07)',
 
     // Text
-    text: '#1F2937',
-    textSecondary: '#6B7280',
-    textMuted: '#9CA3AF',
+    text: '#1A1A2E',
+    textSecondary: '#64748B',
+    textMuted: '#94A3B8',
     textOnPrimary: '#FFFFFF',
 
     // Border
-    border: 'rgba(16, 185, 129, 0.2)',
-    borderLight: 'rgba(0, 0, 0, 0.05)',
+    border: 'rgba(0, 0, 0, 0.08)',
+    borderLight: 'rgba(0, 0, 0, 0.04)',
 
     // Shadow
-    shadow: 'rgba(0, 0, 0, 0.1)',
+    shadow: 'rgba(0, 0, 0, 0.08)',
 
-    // Tab bar
-    tabBar: 'rgba(255, 255, 255, 0.9)',
-    tabBarBorder: 'rgba(16, 185, 129, 0.1)',
+    // Tab bar — Telegram-style flat white
+    tabBar: '#FFFFFF',
+    tabBarBorder: 'rgba(0, 0, 0, 0.07)',
+    tabActive: '#22C55E',
+    tabInactive: '#94A3B8',
   },
   dark: {
-    // Primary green palette (Ramadan theme)
-    primary: '#10B981',
-    primaryLight: '#34D399',
-    primaryDark: '#059669',
-    primaryMuted: 'rgba(16, 185, 129, 0.2)',
+    primary: '#4ADE80',
+    primaryLight: '#6EE7A0',
+    primaryDark: '#22C55E',
+    primaryMuted: 'rgba(74, 222, 128, 0.15)',
 
-    // Accent colors
-    accent: '#F59E0B',
-    accentLight: '#FBBF24',
+    fastingColor: '#4ADE80',
+    fastingMuted: 'rgba(74, 222, 128, 0.15)',
+    prayerColor: '#C084FC',
+    prayerMuted: 'rgba(192, 132, 252, 0.15)',
+    rewardColor: '#FB923C',
+    rewardMuted: 'rgba(251, 146, 60, 0.15)',
+    sunatColor: '#22D3EE',
+    sunatMuted: 'rgba(34, 211, 238, 0.15)',
+    quranColor: '#60A5FA',
+    quranMuted: 'rgba(96, 165, 250, 0.15)',
+    doaColor: '#F472B6',
+    doaMuted: 'rgba(244, 114, 182, 0.15)',
 
-    // Status colors
-    success: '#10B981',
-    warning: '#F59E0B',
-    error: '#EF4444',
+    accent: '#FB923C',
+    accentLight: '#FDBA74',
 
-    // Fasting status
-    fastingFull: '#10B981',
-    fastingHalf: '#F59E0B',
-    fastingNone: '#EF4444',
+    success: '#4ADE80',
+    warning: '#FB923C',
+    error: '#F87171',
 
-    // Background
-    background: '#0A1F13',
-    backgroundSecondary: '#0F2D1B',
-    surface: 'rgba(15, 45, 27, 0.7)',
-    surfaceSolid: '#0F2D1B',
+    fastingFull: '#4ADE80',
+    fastingHalf: '#FB923C',
+    fastingNone: '#F87171',
 
-    // Glass effect
-    glass: 'rgba(15, 45, 27, 0.6)',
-    glassBorder: 'rgba(16, 185, 129, 0.3)',
+    background: '#0F172A',
+    backgroundSecondary: '#1E293B',
+    backgroundGradient: ['#0F172A', '#1E293B', '#162032'] as const,
 
-    // Text
-    text: '#F9FAFB',
-    textSecondary: '#D1D5DB',
-    textMuted: '#9CA3AF',
+    surface: 'rgba(30, 41, 59, 0.85)',
+    surfaceSolid: '#1E293B',
+    glass: 'rgba(30, 41, 59, 0.80)',
+    glassBorder: 'rgba(74, 222, 128, 0.20)',
+    glassShadow: 'rgba(0, 0, 0, 0.30)',
+
+    text: '#F1F5F9',
+    textSecondary: '#94A3B8',
+    textMuted: '#64748B',
     textOnPrimary: '#FFFFFF',
 
-    // Border
-    border: 'rgba(16, 185, 129, 0.3)',
-    borderLight: 'rgba(255, 255, 255, 0.1)',
+    border: 'rgba(255, 255, 255, 0.08)',
+    borderLight: 'rgba(255, 255, 255, 0.04)',
 
-    // Shadow
-    shadow: 'rgba(0, 0, 0, 0.3)',
+    shadow: 'rgba(0, 0, 0, 0.30)',
 
-    // Tab bar
-    tabBar: 'rgba(15, 45, 27, 0.95)',
-    tabBarBorder: 'rgba(16, 185, 129, 0.2)',
+    tabBar: '#0F172A',
+    tabBarBorder: 'rgba(255, 255, 255, 0.07)',
+    tabActive: '#4ADE80',
+    tabInactive: '#64748B',
   },
 };
 
@@ -112,6 +137,7 @@ export const borderRadius = {
   md: 12,
   lg: 16,
   xl: 20,
+  xxl: 24,
   full: 9999,
 };
 
