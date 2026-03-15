@@ -43,7 +43,8 @@ export const usePrayer = (childId: string) => {
   const updatePrayer = useCallback(async (date: string, prayer: PrayerName, completed: boolean) => {
     if (!childId) return { success: false, error: 'No child selected' };
 
-    const existing = childLogs.find((l) => l.date === date);
+    const freshLogs = usePrayerStore.getState().logs[childId] || [];
+    const existing = freshLogs.find((l) => l.date === date);
 
     const prayerData = {
       child_id: childId,
@@ -56,7 +57,6 @@ export const usePrayer = (childId: string) => {
       [prayer]: completed,
     };
 
-    // Optimistic update
     const optimisticLog: PrayerLog = {
       id: existing?.id ?? `temp-${date}`,
       ...prayerData,
@@ -75,7 +75,6 @@ export const usePrayer = (childId: string) => {
       upsertLog(childId, data as PrayerLog);
       return { success: true, log: data as PrayerLog };
     } catch (err) {
-      // Revert optimistic update on error
       if (existing) {
         upsertLog(childId, existing);
       }
@@ -83,7 +82,7 @@ export const usePrayer = (childId: string) => {
       setError(message);
       return { success: false, error: message };
     }
-  }, [childId, childLogs, upsertLog, setError]);
+  }, [childId, upsertLog, setError]);
 
   const getPrayerLogForDate = useCallback((date: string): PrayerLog | null => {
     return childLogs.find((l) => l.date === date) ?? null;

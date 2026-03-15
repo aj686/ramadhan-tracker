@@ -124,6 +124,45 @@ export interface DoaLog {
   doa_kenderaan: boolean;
 }
 
+// ── Learning Modules Types ──────────────────────────────────────────────────
+
+export type ModuleId = 'animals' | 'allah_names' | 'prophets' | 'transport' | 'countries';
+
+export interface LearningModule {
+  id: ModuleId;
+  title: string;
+  emoji: string;
+  color: string;
+  colorMuted: string;
+  isPremium: boolean;
+  itemCount: number;
+}
+
+export interface LearningItem {
+  id: string;
+  emoji: string;
+  word: string;
+  malay: string;
+}
+
+export interface AllahName {
+  id: string;
+  number: number;
+  arabic: string;
+  transliteration: string;
+  meaning: string;
+}
+
+export interface Prophet {
+  id: string;
+  name: string;
+  arabicName: string;
+  description: string;
+  order: number;
+}
+
+export type CardState = 'idle' | 'playing_word' | 'playing_spell' | 'done';
+
 // Navigation param types
 export type RootStackParamList = {
   Login: undefined;

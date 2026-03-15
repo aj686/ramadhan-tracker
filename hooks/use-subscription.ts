@@ -29,6 +29,8 @@ export const useSubscription = () => {
     canAccessDoa:        isPremium,
     canAccessStreak:     isPremium,
     canAccessLeaderboard: isPremium,
+    canAccessTransport:  isPremium,
+    canAccessCountries:  isPremium,
     canExportReport:     isPremium,
   };
 };

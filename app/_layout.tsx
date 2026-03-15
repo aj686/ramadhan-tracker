@@ -66,6 +66,10 @@ function RootLayoutNav() {
         options={{ animation: 'slide_from_right' }}
       />
       <Stack.Screen
+        name="learn/[module]"
+        options={{ animation: 'slide_from_right' }}
+      />
+      <Stack.Screen
         name="premium/upgrade"
         options={{ animation: 'slide_from_bottom', presentation: 'modal' }}
       />

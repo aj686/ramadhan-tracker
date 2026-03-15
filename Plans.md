@@ -543,7 +543,7 @@ BlurView intensity: 60
 - [x] components/glass-card.tsx, category-chip.tsx, tracker-card.tsx, progress-bar.tsx, premium-gate.tsx
 - [x] Delete app/child/[id].tsx
 
-### Phase 2 🔄 IN PROGRESS 2026-03-01
+### Phase 2 ✅ COMPLETED 2026-03-01
 - [x] types/index.ts — SunatLog, QuranLog, DoaLog
 - [x] store/sunat-store.ts
 - [x] store/quran-store.ts
@@ -573,10 +573,76 @@ BlurView intensity: 60
 - [x] app/premium/upgrade.tsx — paywall screen (plan selector + ToyyibPay browser flow)
 - [x] app/_layout.tsx — register premium/upgrade route (modal)
 - [x] app/(tabs)/profile.tsx — real upgrade nav + expiry date shown
-- [ ] ⚠️ DEPLOY: Run SQL migration in Supabase dashboard
+- [x] ⚠️ DEPLOY: Run SQL migration in Supabase dashboard
 - [ ] ⚠️ DEPLOY: `supabase functions deploy create-payment payment-callback payment-return`
 - [ ] ⚠️ SECRETS: `supabase secrets set TOYYIBPAY_SECRET_KEY=... TOYYIBPAY_CATEGORY_CODE=... TOYYIBPAY_SANDBOX=true PAYMENT_CALLBACK_URL=... PAYMENT_RETURN_URL=...`
 
+### Phase 4 ✅ Learning Modules — 2026-03-15
+- [x] `expo-speech` installed
+- [x] types/index.ts — LearningItem, AllahName, Prophet, LearningModule, CardState, ModuleId
+- [x] data/animals.ts — 30 animals (FREE)
+- [x] data/allah-names.ts — 99 Names of Allah (FREE)
+- [x] data/prophets.ts — 25 Prophets & Rasul (FREE)
+- [x] data/transport.ts — 25 vehicles (PREMIUM)
+- [x] data/countries.ts — 30 countries (PREMIUM)
+- [x] hooks/use-speech.ts — expo-speech sequencing (word x3 + spell + word, Allah names, Prophets)
+- [x] components/letter-highlight.tsx — animated letter-by-letter green highlight
+- [x] components/learning-card.tsx — interactive card with idle/playing_word/playing_spell/done states
+- [x] app/(tabs)/learn.tsx — module selector (5th tab)
+- [x] app/learn/[module].tsx — 2-column card grid for selected module
+- [x] Update app/(tabs)/_layout.tsx — 5th tab: Learn (book icon)
+- [x] Update app/_layout.tsx — register learn/[module] route
+- [x] Update hooks/use-subscription.ts — canAccessTransport, canAccessCountries gates
+- [x] Update components/index.ts — export LearningCard, LetterHighlight
+- [x] App name changed to MyLittleMuslim (app.json, package.json)
+- [x] Logo replaced with official logo (icon, splash, favicon, android foreground — proper PNG)
+
+### Phase 5 — Bug Fixes & Auth — 2026-03-15
+- [x] Fix prayer stale closure bug — use `usePrayerStore.getState()` for fresh state (users can now tap all 5 prayers per day)
+- [x] Fix premium crash — `ActivityIndicator` missing import in upgrade.tsx
+- [x] Premium subscribe button shows "Coming Soon" popup instead of calling ToyyibPay
+- [x] Auth: register without email verification (immediate login after signup)
+- [x] Auth: verify.tsx OTP screen built (ready for future use when email verification enabled)
+- [x] Auth: verifyOtp + resendVerification added to use-auth.ts hook
+- [x] Logo updated to new official icon (all sizes: icon, splash, favicon, android foreground)
+- [x] Security audit passed — no malicious code, no tracking, no dangerous permissions
+
 ---
 
-*End of Plans.md — updated 2026-03-02 (Phase 3 ToyyibPay design added)*
+## 12. Current Status — 2026-03-15
+
+### WORKING (ready for users)
+- Register / Login (no email verification — instant access)
+- Add up to 2 children (free), unlimited (premium)
+- Puasa Ramadhan tracker (30-day log)
+- Solat 5 Waktu tracker (year view, all 5 prayers per day)
+- Reward system (money + custom rewards)
+- Learning modules: Animals (30), 99 Names of Allah (99), Prophets (25) — with expo-speech
+- Family leaderboard
+- Profile screen with theme toggle (light/dark/system)
+- Premium gate UI on locked features
+- Premium upgrade screen (shows "Coming Soon" popup)
+
+### NOT WORKING / NOT DEPLOYED
+- [ ] Sunat tracker — needs `sunat_log` table in Supabase (Phase 2 SQL not run)
+- [ ] Quran tracker — needs `quran_log` table in Supabase (Phase 2 SQL not run)
+- [ ] Doa tracker — needs `doa_log` table in Supabase (Phase 2 SQL not run)
+- [ ] ToyyibPay payment — Edge Functions not deployed, secrets not set
+- [ ] Learning modules: Transport, Countries — locked behind premium (working as intended)
+- [ ] Email verification — built but disabled (verify.tsx ready, Supabase email confirmation OFF)
+- [ ] Language toggle (English/Malay) — not yet built
+- [ ] AdMob ads — not yet implemented
+- [ ] Push notifications — not yet implemented
+- [ ] PDF progress report — not yet implemented
+
+### DEPLOYMENT CHECKLIST (Supabase)
+- [x] Run `004_subscriptions.sql` migration
+- [ ] Run Phase 2 SQL: create `sunat_log`, `quran_log`, `doa_log` tables
+- [ ] Deploy Edge Functions: `supabase functions deploy create-payment payment-callback payment-return`
+- [ ] Set secrets: `supabase secrets set TOYYIBPAY_SECRET_KEY=... TOYYIBPAY_CATEGORY_CODE=... TOYYIBPAY_SANDBOX=true PAYMENT_CALLBACK_URL=... PAYMENT_RETURN_URL=...`
+- [ ] (Optional) Enable email confirmation + update email template with `{{ .Token }}`
+- [ ] (Optional) Set up custom SMTP for reliable email delivery
+
+---
+
+*End of Plans.md — updated 2026-03-15 (Phase 5 bug fixes + status overview)*

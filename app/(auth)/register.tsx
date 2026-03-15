@@ -1,24 +1,25 @@
-import React, { useState } from 'react';
-import {
-  View,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  StyleSheet,
-  Alert,
-  KeyboardAvoidingView,
-  Platform,
-  ActivityIndicator,
-  ScrollView,
-} from 'react-native';
-import { useRouter } from 'expo-router';
-import { LinearGradient } from 'expo-linear-gradient';
-import { BlurView } from 'expo-blur';
-import { Ionicons } from '@expo/vector-icons';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { borderRadius, spacing, typography } from '@/constants/theme';
 import { useAuth } from '@/hooks/use-auth';
 import { useTheme } from '@/hooks/use-theme';
-import { borderRadius, spacing, typography } from '@/constants/theme';
+import { Ionicons } from '@expo/vector-icons';
+import { BlurView } from 'expo-blur';
+import { LinearGradient } from 'expo-linear-gradient';
+import { useRouter } from 'expo-router';
+import React, { useState } from 'react';
+import {
+    ActivityIndicator,
+    Alert,
+    Image,
+    KeyboardAvoidingView,
+    Platform,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View,
+} from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 export default function RegisterScreen() {
   const { colors, isDark } = useTheme();
@@ -46,6 +47,8 @@ export default function RegisterScreen() {
     const result = await register(email.trim(), password);
     if (!result.success) {
       Alert.alert('Registration Failed', result.error || 'Please try again');
+    } else if (result.needsVerification) {
+      router.push({ pathname: '/(auth)/verify', params: { email: email.trim() } });
     }
   };
 
@@ -68,9 +71,11 @@ export default function RegisterScreen() {
         >
           {/* Logo */}
           <View style={styles.logoContainer}>
-            <View style={[styles.logoCircle, { backgroundColor: colors.primaryMuted }]}>
-              <Text style={styles.logoEmoji}>🌙</Text>
-            </View>
+            <Image
+              source={require('@/assets/images/logo-icon.png')}
+              style={styles.logoImage}
+              resizeMode="contain"
+            />
             <Text style={[styles.title, { color: colors.text }]}>Create Account</Text>
             <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
               Start your children's Ramadan journey
@@ -183,15 +188,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: spacing.xxxl,
   },
-  logoCircle: {
-    width: 88,
-    height: 88,
+  logoImage: {
+    width: 100,
+    height: 100,
     borderRadius: borderRadius.full,
-    justifyContent: 'center',
-    alignItems: 'center',
     marginBottom: spacing.lg,
   },
-  logoEmoji: { fontSize: 40 },
   title: { ...typography.title1, textAlign: 'center' },
   subtitle: { ...typography.subhead, textAlign: 'center', marginTop: spacing.sm },
   formCard: {

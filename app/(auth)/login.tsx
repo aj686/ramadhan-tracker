@@ -9,6 +9,7 @@ import {
   KeyboardAvoidingView,
   Platform,
   ActivityIndicator,
+  Image,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -56,9 +57,11 @@ export default function LoginScreen() {
 
           {/* Logo */}
           <View style={styles.logoContainer}>
-            <View style={[styles.logoCircle, { backgroundColor: colors.primaryMuted }]}>
-              <Text style={styles.logoEmoji}>🌙</Text>
-            </View>
+            <Image
+              source={require('@/assets/images/logo-icon.png')}
+              style={styles.logoImage}
+              resizeMode="contain"
+            />
             <Text style={[styles.title, { color: colors.text }]}>MyLittleMuslim</Text>
             <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
               Track your children's Ramadan journey
@@ -156,16 +159,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: spacing.xxxl,
   },
-  logoCircle: {
-    width: 88,
-    height: 88,
+  logoImage: {
+    width: 100,
+    height: 100,
     borderRadius: borderRadius.full,
-    justifyContent: 'center',
-    alignItems: 'center',
     marginBottom: spacing.lg,
-  },
-  logoEmoji: {
-    fontSize: 40,
   },
   title: {
     ...typography.title1,

@@ -7,7 +7,6 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import * as WebBrowser from 'expo-web-browser';
 import { useTheme } from '@/hooks/use-theme';
 import { useSubscription } from '@/hooks/use-subscription';
 import { PLANS, type PlanId } from '@/services/toyyibpay';
@@ -27,10 +26,9 @@ export default function UpgradeScreen() {
   const { colors, isDark } = useTheme();
   const insets = useSafeAreaInsets();
   const router = useRouter();
-  const { checkSubscription, createPayment, isPremium, isChecking } = useSubscription();
+  const { checkSubscription, isPremium, isChecking } = useSubscription();
 
   const [selectedPlan, setSelectedPlan] = useState<PlanId>('yearly');
-  const [isPaying, setIsPaying] = useState(false);
 
   // If user is already premium, go back
   if (isPremium) {
@@ -38,33 +36,12 @@ export default function UpgradeScreen() {
     return null;
   }
 
-  const handleSubscribe = async () => {
-    setIsPaying(true);
-    try {
-      const result = await createPayment(selectedPlan);
-      // Open ToyyibPay in browser
-      await WebBrowser.openBrowserAsync(result.paymentUrl, {
-        presentationStyle: WebBrowser.WebBrowserPresentationStyle.FULL_SCREEN,
-      });
-      // Browser closed — prompt user to check status
-      Alert.alert(
-        'Check Payment',
-        'Did you complete the payment? Tap "Check Status" to verify.',
-        [
-          { text: 'Not yet', style: 'cancel' },
-          {
-            text: 'Check Status',
-            onPress: async () => {
-              await checkSubscription();
-            },
-          },
-        ],
-      );
-    } catch (err: any) {
-      Alert.alert('Error', err?.message ?? 'Could not initiate payment. Please try again.');
-    } finally {
-      setIsPaying(false);
-    }
+  const handleSubscribe = () => {
+    Alert.alert(
+      'Coming Soon',
+      'Premium is currently in development stage. All premium features will be available soon. Stay tuned!',
+      [{ text: 'OK' }],
+    );
   };
 
   const handleCheckStatus = async () => {
@@ -163,10 +140,10 @@ export default function UpgradeScreen() {
 
         {/* Subscribe button */}
         <TouchableOpacity
-          style={[styles.subscribeBtn, (isPaying || isChecking) && styles.subscribeBtnDisabled]}
+          style={[styles.subscribeBtn, isChecking && styles.subscribeBtnDisabled]}
           onPress={handleSubscribe}
           activeOpacity={0.85}
-          disabled={isPaying || isChecking}
+          disabled={isChecking}
         >
           <LinearGradient
             colors={['#F97316', '#FB923C']}
@@ -174,16 +151,10 @@ export default function UpgradeScreen() {
             end={{ x: 1, y: 0 }}
             style={styles.subscribeBtnGradient}
           >
-            {isPaying ? (
-              <ActivityIndicator color="#FFFFFF" />
-            ) : (
-              <>
-                <Ionicons name="star" size={20} color="#FFFFFF" />
-                <Text style={styles.subscribeBtnText}>
-                  Subscribe {PLANS[selectedPlan].label} — {PLANS[selectedPlan].price}
-                </Text>
-              </>
-            )}
+            <Ionicons name="star" size={20} color="#FFFFFF" />
+            <Text style={styles.subscribeBtnText}>
+              Subscribe {PLANS[selectedPlan].label} — {PLANS[selectedPlan].price}
+            </Text>
           </LinearGradient>
         </TouchableOpacity>
 
