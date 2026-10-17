@@ -18,6 +18,11 @@ expo-env.d.ts
 *.key
 *.mobileprovision
 
+# Firebase / FCM — treat as credentials, upload to EAS as a file secret instead
+google-services.json
+GoogleService-Info.plist
+*-firebase-adminsdk-*.json
+
 # Metro
 .metro-health-check*
 
