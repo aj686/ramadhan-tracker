@@ -12,7 +12,8 @@
       "newArchitecture": true
     },
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.aj686.ramadantracker"
     },
     "android": {
       "adaptiveIcon": {
