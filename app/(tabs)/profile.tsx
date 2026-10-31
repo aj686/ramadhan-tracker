@@ -115,10 +115,10 @@ export default function ProfileScreen() {
             >
               <View style={styles.upgradeLeft}>
                 <Ionicons name="star" size={24} color="#FFFFFF" />
-                <View>
-                  <Text style={styles.upgradeTitle}>Upgrade to Premium</Text>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.upgradeTitle}>Premium · Akan Datang</Text>
                   <Text style={styles.upgradeDesc}>
-                    Unlock Quran, Doa, Sunat & more
+                    Quran, Doa, Sunat & more coming soon
                   </Text>
                 </View>
               </View>
@@ -289,9 +289,11 @@ const styles = StyleSheet.create({
     padding: spacing.lg,
   },
   upgradeLeft: {
+    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.md,
+    marginRight: spacing.sm,
   },
   upgradeTitle: { ...typography.headline, color: '#FFFFFF' },
   upgradeDesc: { ...typography.caption, color: 'rgba(255,255,255,0.85)', marginTop: 2 },

@@ -47,7 +47,7 @@ app/
   (tabs)/        index · rewards · leaderboard · learn · profile   (5 tabs)
   child/[id]/    index (dashboard) · fasting · prayer · sunat · quran · doa
   learn/[module] card grid per learning module
-  premium/       upgrade (paywall)
+  premium/       upgrade (Coming Soon preview)
 hooks/           use-{auth,children,fasting,prayer,rewards,theme,subscription,
                        sunat,quran,doa,streak,speech}
 store/           {auth,children,fasting,prayer,rewards,subscription,theme,
@@ -211,9 +211,11 @@ the plan price, and it is not idempotent (a replayed callback re-extends `expire
   the POST body;
 - ignore the callback if the row is already `active` for that `billcode`.
 
-Payment is currently stubbed anyway — `app/premium/upgrade.tsx` shows a "Coming Soon" alert
-instead of calling `createPayment()`. Do not un-stub it until the above is fixed and secrets
-are deployed.
+Payment is currently stubbed anyway — `app/premium/upgrade.tsx` shows a non-tappable
+`COMING_SOON_LABEL` state (defined in `services/toyyibpay.ts`) and never calls
+`createPayment()`. Do not un-stub it until the above is fixed and secrets are deployed.
+The "check payment status" action was removed from the screen and must be restored when
+payment is un-stubbed (the flow in [Plans.md](Plans.md) §6.1 needs it).
 
 ### 5.6 Operational constraints for AI
 
@@ -245,7 +247,8 @@ Register/login (no email verification — instant access) · up to 2 children fr
 unlimited premium · Puasa Ramadhan 30-day tracker · Solat 5-waktu year view
 (all 5 prayers/day) · reward system (money + custom) · learning modules Animals,
 99 Names of Allah, Prophets with `expo-speech` · family leaderboard · profile with
-light/dark/system theme toggle · premium gate UI · paywall screen (stubbed).
+light/dark/system theme toggle · premium gate UI · Premium screen (shows Akan Datang;
+payment is not open).
 
 Phases 1–5 in [Plans.md](Plans.md) are code-complete.
 

@@ -3,8 +3,10 @@ import { Ionicons } from '@expo/vector-icons';
 import { Platform } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '@/hooks/use-theme';
+import { useSubscription } from '@/hooks/use-subscription';
 
 export default function TabsLayout() {
+  useSubscription();
   const { colors } = useTheme();
   const insets = useSafeAreaInsets();
 

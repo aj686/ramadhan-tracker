@@ -606,6 +606,7 @@ BlurView intensity: 60
 - [x] Auth: verifyOtp + resendVerification added to use-auth.ts hook
 - [x] Logo updated to new official icon (all sizes: icon, splash, favicon, android foreground)
 - [x] Security audit passed — no malicious code, no tracking, no dangerous permissions
+- [x] Premium screen and upgrade prompts show "Akan Datang · Coming Soon"; plan cards are read-only and no payment can start (2026-11-01)
 
 ---
 
@@ -621,7 +622,7 @@ BlurView intensity: 60
 - Family leaderboard
 - Profile screen with theme toggle (light/dark/system)
 - Premium gate UI on locked features
-- Premium upgrade screen (shows "Coming Soon" popup)
+- Premium screen (shows "Akan Datang · Coming Soon"; no payment can start)
 
 ### NOT WORKING / NOT DEPLOYED
 - [ ] Sunat tracker — needs `sunat_log` table in Supabase (Phase 2 SQL not run)

@@ -3,6 +3,8 @@
 
 export const TOYYIBPAY_SANDBOX = true; // Set to false for production
 
+export const COMING_SOON_LABEL = 'Akan Datang · Coming Soon';
+
 export const PLANS = {
   monthly: {
     id:      'monthly' as const,

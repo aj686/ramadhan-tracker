@@ -57,7 +57,7 @@ export const useChildren = () => {
         success: false,
         error: isPremium
           ? 'Failed to add child'
-          : `Free plan allows up to ${MAX_CHILDREN_FREE} children. Upgrade for unlimited.`,
+          : `Free plan allows up to ${MAX_CHILDREN_FREE} children. Unlimited children with Premium is coming soon.`,
       };
     }
 

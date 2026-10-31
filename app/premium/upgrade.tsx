@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React from 'react';
 import {
-  View, Text, TouchableOpacity, StyleSheet, ScrollView, Alert, ActivityIndicator,
+  View, Text, TouchableOpacity, StyleSheet, ScrollView,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -9,7 +9,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '@/hooks/use-theme';
 import { useSubscription } from '@/hooks/use-subscription';
-import { PLANS, type PlanId } from '@/services/toyyibpay';
+import { COMING_SOON_LABEL, PLANS } from '@/services/toyyibpay';
 import { borderRadius, spacing, typography } from '@/constants/theme';
 
 const FEATURES = [
@@ -19,41 +19,19 @@ const FEATURES = [
   { icon: 'flame',        color: '#F97316', text: 'Prayer streak system' },
   { icon: 'trophy',       color: '#F59E0B', text: 'Family leaderboard' },
   { icon: 'people',       color: '#22C55E', text: 'Unlimited child profiles (free: 2 max)' },
-  { icon: 'ban',          color: '#6B7280', text: 'Remove ads' },
 ];
 
 export default function UpgradeScreen() {
   const { colors, isDark } = useTheme();
   const insets = useSafeAreaInsets();
   const router = useRouter();
-  const { checkSubscription, isPremium, isChecking } = useSubscription();
-
-  const [selectedPlan, setSelectedPlan] = useState<PlanId>('yearly');
+  const { isPremium } = useSubscription();
 
   // If user is already premium, go back
   if (isPremium) {
     router.back();
     return null;
   }
-
-  const handleSubscribe = () => {
-    Alert.alert(
-      'Coming Soon',
-      'Premium is currently in development stage. All premium features will be available soon. Stay tuned!',
-      [{ text: 'OK' }],
-    );
-  };
-
-  const handleCheckStatus = async () => {
-    await checkSubscription();
-    if (isPremium) {
-      Alert.alert('Active!', 'Your Premium subscription is now active.', [
-        { text: 'Continue', onPress: () => router.back() },
-      ]);
-    } else {
-      Alert.alert('Not Active', 'No active subscription found. If you paid, please wait a moment and try again.');
-    }
-  };
 
   return (
     <View style={styles.container}>
@@ -67,7 +45,7 @@ export default function UpgradeScreen() {
         <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
           <Ionicons name="close" size={24} color={colors.text} />
         </TouchableOpacity>
-        <Text style={[styles.headerTitle, { color: colors.text }]}>Go Premium</Text>
+        <Text style={[styles.headerTitle, { color: colors.text }]}>Premium</Text>
         <View style={{ width: 40 }} />
       </View>
 
@@ -80,15 +58,20 @@ export default function UpgradeScreen() {
           <Text style={styles.heroEmoji}>🌙</Text>
           <Text style={[styles.heroTitle, { color: colors.text }]}>MyLittleMuslim Premium</Text>
           <Text style={[styles.heroSub, { color: colors.textSecondary }]}>
-            Unlock all features to help your child build great Islamic habits
+            More features to help your child build great Islamic habits
           </Text>
+          <View style={[styles.comingSoonBadge, { backgroundColor: colors.rewardMuted }]}>
+            <Text style={[styles.comingSoonBadgeText, { color: colors.text }]}>
+              {COMING_SOON_LABEL}
+            </Text>
+          </View>
         </View>
 
         {/* Features list */}
         <View style={[styles.featuresCard, { borderColor: colors.glassBorder, shadowColor: colors.glassShadow }]}>
           <BlurView intensity={60} tint={isDark ? 'dark' : 'light'} style={styles.blur}>
             <View style={[styles.featuresContent, { backgroundColor: colors.glass }]}>
-              <Text style={[styles.featuresTitle, { color: colors.text }]}>What you get</Text>
+              <Text style={[styles.featuresTitle, { color: colors.text }]}>{"What's coming"}</Text>
               {FEATURES.map((f, i) => (
                 <View key={i} style={styles.featureRow}>
                   <View style={[styles.featureIcon, { backgroundColor: `${f.color}20` }]}>
@@ -101,83 +84,47 @@ export default function UpgradeScreen() {
           </BlurView>
         </View>
 
-        {/* Plan selector */}
-        <Text style={[styles.sectionLabel, { color: colors.text }]}>Choose a plan</Text>
+        <Text style={[styles.sectionLabel, { color: colors.text }]}>Planned pricing</Text>
         <View style={styles.plansRow}>
-          {(Object.values(PLANS) as typeof PLANS[PlanId][]).map((plan) => {
-            const isSelected = selectedPlan === plan.id;
-            return (
-              <TouchableOpacity
-                key={plan.id}
-                style={[
-                  styles.planCard,
-                  {
-                    borderColor: isSelected ? colors.rewardColor : colors.glassBorder,
-                    backgroundColor: isSelected ? `${colors.rewardColor}10` : colors.glass,
-                    shadowColor: colors.glassShadow,
-                  },
-                ]}
-                onPress={() => setSelectedPlan(plan.id)}
-                activeOpacity={0.8}
-              >
-                {plan.savings && (
-                  <View style={[styles.savingsBadge, { backgroundColor: colors.rewardColor }]}>
-                    <Text style={styles.savingsText}>{plan.savings}</Text>
-                  </View>
-                )}
-                <Text style={[styles.planLabel, { color: colors.text }]}>{plan.label}</Text>
-                <Text style={[styles.planPrice, { color: colors.rewardColor }]}>{plan.price}</Text>
-                <Text style={[styles.planPeriod, { color: colors.textMuted }]}>{plan.period}</Text>
-                {isSelected && (
-                  <View style={[styles.selectedCheck, { backgroundColor: colors.rewardColor }]}>
-                    <Ionicons name="checkmark" size={12} color="#FFFFFF" />
-                  </View>
-                )}
-              </TouchableOpacity>
-            );
-          })}
+          {Object.values(PLANS).map((plan) => (
+            <View
+              key={plan.id}
+              style={[
+                styles.planCard,
+                {
+                  borderColor: colors.glassBorder,
+                  backgroundColor: colors.glass,
+                  shadowColor: colors.glassShadow,
+                },
+              ]}
+            >
+              {plan.savings && (
+                <View style={[styles.savingsBadge, { backgroundColor: colors.rewardColor }]}>
+                  <Text style={styles.savingsText}>{plan.savings}</Text>
+                </View>
+              )}
+              <Text style={[styles.planLabel, { color: colors.text }]}>{plan.label}</Text>
+              <Text style={[styles.planPrice, { color: colors.rewardColor }]}>{plan.price}</Text>
+              <Text style={[styles.planPeriod, { color: colors.textMuted }]}>{plan.period}</Text>
+            </View>
+          ))}
         </View>
 
-        {/* Subscribe button */}
-        <TouchableOpacity
-          style={[styles.subscribeBtn, isChecking && styles.subscribeBtnDisabled]}
-          onPress={handleSubscribe}
-          activeOpacity={0.85}
-          disabled={isChecking}
+        <View
+          style={[
+            styles.comingSoonBar,
+            { backgroundColor: colors.backgroundSecondary, borderColor: colors.border },
+          ]}
         >
-          <LinearGradient
-            colors={['#F97316', '#FB923C']}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 0 }}
-            style={styles.subscribeBtnGradient}
-          >
-            <Ionicons name="star" size={20} color="#FFFFFF" />
-            <Text style={styles.subscribeBtnText}>
-              Subscribe {PLANS[selectedPlan].label} — {PLANS[selectedPlan].price}
-            </Text>
-          </LinearGradient>
-        </TouchableOpacity>
-
-        {/* Restore / Check status */}
-        <TouchableOpacity
-          style={styles.restoreBtn}
-          onPress={handleCheckStatus}
-          disabled={isChecking}
-          activeOpacity={0.7}
-        >
-          {isChecking ? (
-            <ActivityIndicator size="small" color={colors.textMuted} />
-          ) : (
-            <Text style={[styles.restoreText, { color: colors.textMuted }]}>
-              Already paid? Check payment status
-            </Text>
-          )}
-        </TouchableOpacity>
+          <Ionicons name="time-outline" size={20} color={colors.textSecondary} />
+          <Text style={[styles.comingSoonBarText, { color: colors.textSecondary }]}>
+            {COMING_SOON_LABEL}
+          </Text>
+        </View>
 
         {/* Fine print */}
-        <Text style={[styles.finePrint, { color: colors.textMuted }]}>
-          Payment is processed securely via ToyyibPay (FPX / Credit Card).
-          Subscriptions renew automatically unless cancelled.
+        <Text style={[styles.finePrint, { color: colors.textSecondary }]}>
+          Payment is not open yet. Premium will open here when it is ready.
         </Text>
       </ScrollView>
     </View>
@@ -199,6 +146,10 @@ const styles = StyleSheet.create({
   heroEmoji: { fontSize: 56 },
   heroTitle: { ...typography.title2, textAlign: 'center' },
   heroSub: { ...typography.subhead, textAlign: 'center', maxWidth: 280 },
+  comingSoonBadge: {
+    paddingHorizontal: spacing.md, paddingVertical: spacing.xs, borderRadius: borderRadius.full,
+  },
+  comingSoonBadgeText: { ...typography.footnote, fontWeight: '700' },
   featuresCard: {
     borderRadius: borderRadius.xl, overflow: 'hidden', borderWidth: 1,
     marginBottom: spacing.xl, shadowOffset: { width: 0, height: 4 },
@@ -228,24 +179,12 @@ const styles = StyleSheet.create({
   planLabel: { ...typography.footnote, fontWeight: '600' },
   planPrice: { ...typography.title3, fontWeight: '800' },
   planPeriod: { ...typography.caption },
-  selectedCheck: {
-    position: 'absolute', bottom: spacing.sm, right: spacing.sm,
-    width: 20, height: 20, borderRadius: 10,
-    justifyContent: 'center', alignItems: 'center',
-  },
-  subscribeBtn: {
-    borderRadius: borderRadius.xl, overflow: 'hidden',
-    marginBottom: spacing.md,
-    shadowOffset: { width: 0, height: 4 }, shadowOpacity: 1, shadowRadius: 12, elevation: 4,
-    shadowColor: 'rgba(249,115,22,0.4)',
-  },
-  subscribeBtnDisabled: { opacity: 0.6 },
-  subscribeBtnGradient: {
+  comingSoonBar: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
     gap: spacing.sm, paddingVertical: spacing.lg,
+    borderRadius: borderRadius.xl, borderWidth: 1,
+    marginBottom: spacing.md,
   },
-  subscribeBtnText: { ...typography.headline, color: '#FFFFFF' },
-  restoreBtn: { alignItems: 'center', paddingVertical: spacing.md, marginBottom: spacing.md },
-  restoreText: { ...typography.subhead, textDecorationLine: 'underline' },
+  comingSoonBarText: { ...typography.headline },
   finePrint: { ...typography.caption, textAlign: 'center', lineHeight: 18 },
 });

@@ -192,8 +192,8 @@ export default function HomeScreen() {
       {!canAddChild && !isPremium && (
         <View style={[styles.limitBanner, { backgroundColor: colors.rewardMuted, bottom: insets.bottom + 76 }]}>
           <Ionicons name="star" size={14} color={colors.rewardColor} />
-          <Text style={[styles.limitText, { color: colors.rewardColor }]}>
-            Upgrade Premium for unlimited children
+          <Text style={[styles.limitText, { color: colors.text }]}>
+            Unlimited children with Premium · Akan Datang
           </Text>
         </View>
       )}
@@ -369,7 +369,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.lg,
     borderRadius: borderRadius.full,
   },
-  limitText: { ...typography.caption, fontWeight: '600' },
+  limitText: { ...typography.caption, fontWeight: '600', flexShrink: 1, textAlign: 'center' },
   modalOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.45)',

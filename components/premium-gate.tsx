@@ -4,6 +4,7 @@ import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/hooks/use-theme';
 import { useSubscription } from '@/hooks/use-subscription';
+import { COMING_SOON_LABEL } from '@/services/toyyibpay';
 import { borderRadius, spacing, typography } from '@/constants/theme';
 
 interface PremiumGateProps {
@@ -38,15 +39,15 @@ export const PremiumGate: React.FC<PremiumGateProps> = ({
       </View>
       <Text style={[styles.title, { color: colors.text }]}>Premium Feature</Text>
       <Text style={[styles.desc, { color: colors.textSecondary }]}>
-        {feature} is available with MyLittleMuslim Premium.
+        {feature} will be available with MyLittleMuslim Premium.
       </Text>
       <TouchableOpacity
-        style={[styles.btn, { backgroundColor: colors.rewardColor }]}
+        style={[styles.btn, { backgroundColor: colors.rewardMuted }]}
         onPress={handleUpgrade}
         activeOpacity={0.8}
       >
-        <Ionicons name="star" size={16} color="#FFFFFF" />
-        <Text style={styles.btnText}>Upgrade to Premium</Text>
+        <Ionicons name="time-outline" size={16} color={colors.text} />
+        <Text style={[styles.btnText, { color: colors.text }]}>{COMING_SOON_LABEL}</Text>
       </TouchableOpacity>
     </View>
   );
@@ -56,7 +57,7 @@ const styles = StyleSheet.create({
   gate: {
     borderRadius: borderRadius.xl,
     borderWidth: 1,
-    padding: spacing.xxxl,
+    padding: spacing.xl,
     alignItems: 'center',
     gap: spacing.md,
     margin: spacing.xl,
@@ -82,12 +83,14 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: spacing.sm,
     paddingVertical: spacing.md,
-    paddingHorizontal: spacing.xl,
+    paddingHorizontal: spacing.lg,
     borderRadius: borderRadius.full,
     marginTop: spacing.sm,
   },
   btnText: {
-    ...typography.headline,
-    color: '#FFFFFF',
+    ...typography.subhead,
+    fontWeight: '600',
+    flexShrink: 1,
+    textAlign: 'center',
   },
 });
