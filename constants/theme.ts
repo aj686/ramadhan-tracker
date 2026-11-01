@@ -37,7 +37,7 @@ export const colors = {
     // Background — white with soft pastel gradient
     background: '#FFFFFF',
     backgroundSecondary: '#F8FAFF',
-    backgroundGradient: ['#F0FFF4', '#FFFFFF', '#FFF8F0'] as const,
+    backgroundGradient: ['#F0FFF4', '#FFFFFF', '#FFF8F0'] as [string, string, string],
 
     // Glass card surface
     surface: 'rgba(255, 255, 255, 0.85)',
@@ -97,7 +97,7 @@ export const colors = {
 
     background: '#0F172A',
     backgroundSecondary: '#1E293B',
-    backgroundGradient: ['#0F172A', '#1E293B', '#162032'] as const,
+    backgroundGradient: ['#0F172A', '#1E293B', '#162032'] as [string, string, string],
 
     surface: 'rgba(30, 41, 59, 0.85)',
     surfaceSolid: '#1E293B',
@@ -121,6 +121,77 @@ export const colors = {
     tabInactive: '#64748B',
   },
 };
+
+// Kids games: the reference image's look. Separate from `colors` until the Stage 4 redesign,
+// so the rest of the app does not change yet.
+export const gameColors = {
+  light: {
+    primary: '#7851FA',
+    primaryMuted: 'rgba(120, 81, 250, 0.12)',
+    onPrimary: '#FFFFFF',
+    background: '#F9F8FD',
+    backgroundAlt: '#F2EEFC',
+    surface: '#FFFFFF',
+    text: '#1F1B3A',
+    textSecondary: '#5B5970',
+    highlight: '#F7E32B',
+    star: '#F5B301',
+    starEmpty: '#DAD6EA',
+    correct: '#15803D',
+    correctMuted: 'rgba(34, 197, 94, 0.16)',
+    gentle: '#C2410C',
+    gentleMuted: 'rgba(249, 115, 22, 0.14)',
+    outline: 'rgba(31, 27, 58, 0.10)',
+    shadow: 'rgba(88, 64, 180, 0.16)',
+    silhouette: '#B9B5CC',
+    welcomeGradient: ['#6E51E9', '#8469EC', '#C6BAED'] as [string, string, string],
+    heroGradient: ['#6E51E9', '#8469EC'] as [string, string],
+    sceneGradient: ['#CDEFFF', '#BDEB8B'] as [string, string],
+    tiles: {
+      yellow: '#FDDD62',
+      blue: '#88D6FD',
+      green: '#C6EC63',
+      pink: '#FDBFCE',
+      purple: '#D3C5FF',
+      orange: '#FFC38F',
+    },
+    answers: ['#FBEEE5', '#E7F1FD', '#EDE3F7', '#E0ECEA'],
+  },
+  dark: {
+    primary: '#A78BFA',
+    primaryMuted: 'rgba(167, 139, 250, 0.16)',
+    onPrimary: '#14112A',
+    background: '#14112A',
+    backgroundAlt: '#1E1A38',
+    surface: '#1E1A38',
+    text: '#F3F1FB',
+    textSecondary: '#B5B2CC',
+    highlight: '#F7E32B',
+    star: '#F5B301',
+    starEmpty: '#3A3560',
+    correct: '#4ADE80',
+    correctMuted: 'rgba(74, 222, 128, 0.18)',
+    gentle: '#FDBA74',
+    gentleMuted: 'rgba(251, 146, 60, 0.18)',
+    outline: 'rgba(255, 255, 255, 0.10)',
+    shadow: 'rgba(0, 0, 0, 0.35)',
+    silhouette: '#5B5680',
+    welcomeGradient: ['#2A1F66', '#231A55', '#14112A'] as [string, string, string],
+    heroGradient: ['#3B2C8F', '#2A1F66'] as [string, string],
+    sceneGradient: ['#1E3A5F', '#27502E'] as [string, string],
+    tiles: {
+      yellow: '#4A4020',
+      blue: '#1F4257',
+      green: '#3A4A1E',
+      pink: '#4D2A3A',
+      purple: '#352A66',
+      orange: '#4F3320',
+    },
+    answers: ['#2C2541', '#232B4A', '#2F2550', '#21343A'],
+  },
+};
+
+export type GameColors = typeof gameColors.light;
 
 export const spacing = {
   xs: 4,

@@ -166,16 +166,3 @@ export interface Prophet {
 }
 
 export type CardState = 'idle' | 'playing_word' | 'playing_spell' | 'done';
-
-// Navigation param types
-export type RootStackParamList = {
-  Login: undefined;
-  Register: undefined;
-  MainTabs: undefined;
-  ChildDetail: { childId: string };
-};
-
-export type MainTabParamList = {
-  Home: undefined;
-  RewardsSetting: undefined;
-};

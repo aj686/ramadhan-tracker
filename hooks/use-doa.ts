@@ -105,12 +105,14 @@ export const useDoa = (childId: string) => {
     [childLogs],
   );
 
-  const calculateStats = useCallback(() => {
-    const total = childLogs.reduce(
+  const calculateStats = useCallback((year: number) => {
+    const prefix = `${year}-`;
+    const yearLogs = childLogs.filter((l) => l.date.startsWith(prefix));
+    const total = yearLogs.reduce(
       (s, l) => s + DOA_ITEMS.filter((d) => l[d.key]).length,
       0,
     );
-    return { total, daysLogged: childLogs.length };
+    return { total, daysLogged: yearLogs.length };
   }, [childLogs]);
 
   return {

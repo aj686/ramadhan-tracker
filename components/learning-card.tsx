@@ -81,7 +81,7 @@ export const LearningCard: React.FC<LearningCardProps> = ({ moduleId, item }) =>
         <>
           <Text style={styles.numberBadge}>{p.order}</Text>
           <Animated.Text style={[styles.emoji, { transform: [{ scale: pulseAnim }] }]}>
-            👳
+            📜
           </Animated.Text>
           <Text style={[styles.arabicName, { color: colors.text }]}>{p.arabicName}</Text>
           <Text style={[styles.word, { color: colors.text }]}>{p.name}</Text>

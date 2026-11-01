@@ -5,6 +5,10 @@ export const TOYYIBPAY_SANDBOX = true; // Set to false for production
 
 export const COMING_SOON_LABEL = 'Akan Datang · Coming Soon';
 
+// Stays false until the hardened Edge Functions and their secrets are deployed and a sandbox
+// payment has been tested end to end. While false, no payment can start from the app.
+export const PAYMENT_OPEN = false;
+
 export const PLANS = {
   monthly: {
     id:      'monthly' as const,

@@ -6,8 +6,9 @@ Guidance for Claude Code working in this repository.
 
 ## 1. Project
 
-**MyLittleMuslim** — React Native (Expo) Islamic habit tracker for Malaysian Muslim parents
-and their children (ages 6–15). Freemium: AdMob + RM9.90/mo or RM49.90/yr subscription.
+**MyLittleMuslim** — React Native (Expo) Islamic habit tracker and learning games for Malaysian
+Muslim parents and their children (ages 2–15; the games are for ages 2–6). Freemium: AdMob +
+RM9.90/mo or RM49.90/yr subscription.
 
 | Field | Value |
 |---|---|
@@ -19,7 +20,8 @@ and their children (ages 6–15). Freemium: AdMob + RM9.90/mo or RM49.90/yr subs
 | Android package | `com.aj686.ramadantracker` |
 | Branch | `master` (no PR workflow — commit direct) |
 
-Planning doc: [Plans.md](Plans.md). Personal learning notes: `NOTES.md` (gitignored — do not commit).
+Planning doc: [Plans.md](Plans.md), with the current roadmap and owner to-do list in §13.
+Personal learning notes: `NOTES.md` (gitignored — do not commit).
 
 ---
 
@@ -39,37 +41,49 @@ Hard rules, enforced throughout the codebase:
 - Multi-child data is keyed per child: `Record<string, SomeLog[]>` → `{ "<child-uuid>": [...] }`.
 - Read a store outside React with `useSomeStore.getState()` — never inside JSX.
 
+Known exceptions, older than these rules: `store/subscription-store.ts` and `store/theme-store.ts`
+contain async calls, and `app/(tabs)/leaderboard.tsx` queries Supabase directly. Don't copy them.
+
 ### Directory map
 
 ```
 app/
-  (auth)/        login, register, verify (OTP — built, currently unused)
+  (auth)/        login, register, verify (OTP — built, currently unused), forgot-password
   (tabs)/        index · rewards · leaderboard · learn · profile   (5 tabs)
   child/[id]/    index (dashboard) · fasting · prayer · sunat · quran · doa
   learn/[module] card grid per learning module
-  premium/       upgrade (Coming Soon preview)
+  games/         index (kids home) · journey/[journey] · play/[activityId]
+  settings/      reminders (Android and iOS only)
+  premium/       upgrade (Coming Soon until PAYMENT_OPEN is true)
+  privacy, delete-account   public: they open signed out, for the Play Console links
   +not-found     redirects unknown URLs to /
 hooks/           use-{auth,children,fasting,prayer,rewards,theme,subscription,
-                       sunat,quran,doa,streak,speech,go-back,refetch-on-foreground}
+                       sunat,quran,doa,streak,speech,go-back,refetch-on-foreground,
+                       game-settings,game-progress,game-audio,game-session,
+                       prayer-reminders,ads,report}
 store/           {auth,children,fasting,prayer,rewards,subscription,theme,
-                  sunat,quran,doa}-store
-components/      glass-card · category-chip · progress-bar · tracker-card ·
-                 premium-gate · learning-card · letter-highlight
+                  sunat,quran,doa,game-progress,game-settings,reminder}-store
+components/      glass-card · category-chip · progress-bar · tracker-card · premium-gate ·
+                 learning-card · letter-highlight · ad-banner(.web)
+components/game/ engine UI: game-renderer (mechanic → game) · 8 games · shell parts
 data/            animals(30) allah-names(99) prophets(25) transport(25) countries(30)
-services/        supabase.ts · toyyibpay.ts · alert.ts · alert.web.ts · save-error.ts · dates.ts
-supabase/        migrations/00{1..4}_*.sql · functions/{create-payment,
-                 payment-callback,payment-return}
-constants/       theme.ts
+data/games/      schema · activities (the 26 games) · items · letter-strokes · figures
+i18n/            games.ts (all game interface text, BM and English)
+services/        supabase · toyyibpay · alert(.web) · save-error · dates · islamic-calendar ·
+                 prayer-times · notifications(.web) · report · report-output(.web)
+services/game/   session (rules) · question-builder · progress · progress-storage ·
+                 audio-manager · media (register art and audio here) · geometry · random
+supabase/        migrations/00{1..5}_*.sql · config.toml · functions/{create-payment,
+                 payment-callback,payment-return,delete-account,_shared}
+constants/       theme.ts · legal.ts · ads.ts
 types/           index.ts
+tests/           node:test, no framework: games · calendar · features · payment
 public/          web only: index.html · manifest.json · register-sw.js · _headers · icons/
 scripts/         web-postexport.js (build step + build check) · sw-kill.js (service worker recovery)
+                 · generate-sfx.js (makes assets/audio/)
 ```
 
 Web-only config at the root: `workbox-config.js`, `wrangler.jsonc`.
-
-**Dead code — do not extend, do not import:** `screens/` and `navigation/` are leftovers
-from the pre-Expo-Router build (Phase 0). All live UI is under `app/`. Flag them for deletion
-rather than editing them.
 
 ---
 
@@ -89,6 +103,16 @@ const daysElapsed  = Math.max(1, Math.floor((today - jan1) / 86400000) + 1);
 const possibleSoFar = daysElapsed * 5;   // NOT 150
 ```
 Fasting is the exception: fixed 30 Ramadan days.
+
+### Years — never hardcode one
+Ramadan, Syawal and Arafah come from the table in `services/islamic-calendar.ts`, one row per
+Hijri year. Rows with `confirmed: false` are expected dates: replace them when JAKIM announces.
+Past the table's end, dates are estimated rather than failing. Don't change the 1447 row's start:
+2026 logs were saved against it.
+
+Stats match the period they are labelled with, because tables hold every year: `calculateStats(year)`,
+`getTotalPrayerCount(year)`, and fasting stats cover one Ramadan. Read the year inside the component,
+not at module level, so an app left open over New Year stays right.
 
 ### Stale closures in optimistic updates
 Prayer toggles previously dropped taps because the handler closed over stale store state.
@@ -141,9 +165,29 @@ skips `setLoading`. Never add it to Rewards: a refetch overwrites a half-typed f
 - Upsert needs the unique-constraint columns: `{ onConflict: 'child_id,date' }`
 - `PGRST116` means "no rows" — seed defaults, don't throw.
 
+### Kids games
+- **New activity = data only.** Add it to `data/games/activities.ts` using an existing `mechanic`
+  and `spec`. `tests/games.test.ts` then builds it in both languages across several seeds.
+- Games only report what happened through `report({ correct, solved, speak })`. The shell owns
+  scoring (`services/game/session.ts`), sound, feedback and moving on.
+- Questions are built from a seed, so switching language rebuilds the same round. Language is in
+  the game's React key, because a word's letters change with language.
+- Drag and drawing use `PanResponder` and rotated Views, on purpose: no Reanimated, gesture handler
+  or SVG, so nothing new is exposed to the web CSP and no native module is needed. Don't add them
+  without a reason.
+- Art and audio are registered by key in `services/game/media.ts`. An item with no file falls back
+  to its emoji and to text-to-speech. Never assume a voice exists: `audioManager.canSpeak` can be
+  false, and every game must stay playable with no sound.
+- Progress stays on the device under an opaque child or parent id, with stars and scores only.
+  `clearUserData` clears memory, `deleteChild` and `deleteAccount` clear the disk.
+- No ads and no premium locks inside games. The way out goes through `ParentalGate`.
+
 ### Design system
 Category colors, glass tokens and both gradients live in `constants/theme.ts` — read them
-from `useTheme()`, never hardcode a hex in a screen.
+from `useTheme()`, never hardcode a hex in a screen. Games use the separate `game` palette from
+`useTheme()`, which follows the reference image. Stage 4 of Plans.md §13 moves the rest of the app
+onto it, then this section gets rewritten. Colours that are content, like a colour swatch in a game,
+belong in `data/games/`.
 
 | Tracker | Color | | Tracker | Color |
 |---|---|---|---|---|
@@ -157,8 +201,10 @@ Tab bar: flat white, 0.5px border, zero elevation (Telegram style).
 ### Freemium gates
 `hooks/use-subscription.ts` is the single source of truth. Free tier: 2 children, Puasa
 Ramadhan, Solat, **and the full reward system (money + custom) — rewards are FREE, not
-premium**. Premium: unlimited children, Sunat, Quran, Doa, streak, leaderboard, Transport
-and Countries learning modules, no ads.
+premium**. Kids games are free too, at least until payment opens. Premium: unlimited children,
+Sunat, Quran, Doa, streak, leaderboard, Transport and Countries learning modules, PDF report, no ads.
+Screens read `canAccess*` from the hook and don't query a premium table until it is true. The child
+limit is only enforced in the client so far (Plans.md §13.7).
 
 ---
 
@@ -168,16 +214,21 @@ and Countries learning modules, no ads.
 npm start            # expo start (NODE_ENV=development via cross-env)
 npm run android      # expo start --android
 npm run lint         # expo lint
+npm test             # node:test over tests/ (pure logic only, needs Node 22.18+)
 npx tsc --noEmit     # typecheck — run before declaring work done
 npm run web:build    # web export, CSP + build ID, Workbox, build check (needs Node 22)
 npm run web:preview  # serve dist on port 5000 (no _headers, no SPA fallback)
 ```
 
-No test suite exists. "Verified" means it typechecks, lints, and you ran the screen — say
-plainly which of those you actually did.
+Tests cover logic only, not screens. "Verified" means it typechecks, lints, tests pass and you ran
+the screen — say plainly which of those you actually did. A new route needs `.expo/types` regenerated
+(run `npx expo start` once) or `tsc` reports it as an unknown path.
 
 **Releases.** Every push to `master` publishes OTA to production Android (`eas-update.yml`,
-which skips pushes that change only web-only files or `**.md`). Once Cloudflare Workers Builds
+which skips pushes that change only web-only files or `**.md`). A push that touches `package.json`,
+`package-lock.json`, `app.json` or `eas.json` skips the publish and needs `eas build` instead.
+`runtimeVersion` follows the app `version`, so bump the version in the same commit that adds a
+native module: JS that needs it must never reach a binary without it. Once Cloudflare Workers Builds
 is connected to this repo, **every push to `master` also deploys the web app.** Build command
 `npm run web:build`, deploy command `npx wrangler deploy`, `NODE_VERSION=22`. The Worker name in
 `wrangler.jsonc` must stay `mylittlemuslim`, because a mismatch with the Cloudflare project name
@@ -257,23 +308,21 @@ Every child-scoped table (`children`, `fasting_log`, `prayer_log`, `rewards`, `s
 `INSERT`/`UPDATE` happens service-role-side in Edge Functions so a user cannot grant
 themselves premium.
 
-### 5.5 Payment integrity — known gap
+### 5.5 Payment integrity
 
-`supabase/functions/payment-callback/index.ts` activates a subscription on `status === '1'`
-and validates only that `order_id` exists. It does **not** verify the paid `amount` against
-the plan price, and it is not idempotent (a replayed callback re-extends `expires_at` from
-`now()`). The endpoint is public by necessity. Before going to production, harden it:
+`supabase/functions/payment-callback/index.ts` is public by necessity, so it trusts nothing in the
+POST body. It matches the order and bill code, re-confirms the payment with ToyyibPay
+`getBillTransactions`, checks the amount against the plan price in `functions/_shared/toyyibpay.ts`,
+and only activates a row still `pending`, so a replayed callback changes nothing. Keep all of that.
+Paying more than the price is accepted because the customer may pay a gateway charge.
 
-- compare `amount` (sen) against the plan's expected price and reject a mismatch;
-- re-confirm the bill server-side via ToyyibPay `getBillTransactions` rather than trusting
-  the POST body;
-- ignore the callback if the row is already `active` for that `billcode`.
+**This code has never run against ToyyibPay.** The response field names and the ringgit unit of
+`billpaymentAmount` come from documentation and must be confirmed in the sandbox.
 
-Payment is currently stubbed anyway — `app/premium/upgrade.tsx` shows a non-tappable
-`COMING_SOON_LABEL` state (defined in `services/toyyibpay.ts`) and never calls
-`createPayment()`. Do not un-stub it until the above is fixed and secrets are deployed.
-The "check payment status" action was removed from the screen and must be restored when
-payment is un-stubbed (the flow in [Plans.md](Plans.md) §6.1 needs it).
+`PAYMENT_OPEN` in `services/toyyibpay.ts` is `false`, so `app/premium/upgrade.tsx` shows
+`COMING_SOON_LABEL` and cannot call `createPayment()`. Do not set it to `true` until the functions
+and secrets are deployed and a sandbox payment has worked end to end (Plans.md §13.7). Deploy
+`payment-callback` and `payment-return` with `--no-verify-jwt`: ToyyibPay sends no auth header.
 
 ### 5.6 Operational constraints for AI
 
@@ -298,35 +347,36 @@ payment is un-stubbed (the flow in [Plans.md](Plans.md) §6.1 needs it).
 
 ---
 
-## 6. Current status — audited 2026-10-17
+## 6. Current status — 2026-11-01
 
-### Shipped and working
-Register/login (no email verification — instant access) · up to 2 children free /
-unlimited premium · Puasa Ramadhan 30-day tracker · Solat 5-waktu year view
-(all 5 prayers/day) · reward system (money + custom) · learning modules Animals,
-99 Names of Allah, Prophets with `expo-speech` · family leaderboard · profile with
-light/dark/system theme toggle · premium gate UI · Premium screen (shows Akan Datang;
-payment is not open).
+Stages 1–3 of [Plans.md](Plans.md) §13 are code-complete. **None of it is deployed, and none of it
+has run on a phone yet.** It has been tested on web only. Every owner step is listed in §13.7.
 
-Phases 1–6 in [Plans.md](Plans.md) are code-complete.
+### Code-complete, not yet released
+Register/login with password reset · account deletion · privacy policy (BM and English, draft) ·
+up to 2 children free / unlimited premium · Puasa Ramadhan tracker for any year · Solat year view ·
+reward system · learning modules · family leaderboard · theme toggle · premium gates · 26 kids games
+in BM and English · prayer reminders (Android and iOS) · PDF report · AdMob banner (off until unit ids
+are set) · hardened payment functions (client closed by `PAYMENT_OPEN`).
 
-### Blocked on deployment, not on code
+### Blocked on the owner, not on code
 | Item | Blocker |
 |---|---|
-| Sunat / Quran / Doa trackers | `sunat_log`, `quran_log`, `doa_log` tables not created in Supabase. SQL sits inline in Plans.md §8 — **has no migration file yet**; should become `supabase/migrations/005_phase2_logs.sql`. |
-| ToyyibPay payment | Edge Functions not deployed; secrets not set; callback not hardened (§5.5); client still stubbed. |
-| Email verification | `verify.tsx` + `verifyOtp`/`resendVerification` built; Supabase email confirmation is OFF. Needs `{{ .Token }}` template + custom SMTP. `register.tsx` passes the parent's email as a route param, which on web lands in the URL, browser history and host logs: move it into `auth-store` before turning verification on. |
-| Web (PWA) | Code complete, not deployed. Cloudflare Workers Builds not connected; build variables not set; the live address has not been tested yet. Android must get the shared fixes first (§4). |
+| Android | Device test, then `eas build`. Phones still run old code. |
+| Sunat / Quran / Doa trackers | Run `supabase/migrations/005_phase2_logs.sql`. |
+| Account deletion | Deploy the `delete-account` function. |
+| Password reset, email verification | Supabase email templates need `{{ .Token }}`, plus custom SMTP. |
+| ToyyibPay payment | Deploy functions, set secrets, sandbox test, then set `PAYMENT_OPEN`. |
+| Web (PWA) | Connect Cloudflare Workers Builds, after Android (§4). |
+| AdMob | Real app ids in `app.json`, unit ids in `constants/ads.ts`. |
+| Kids games art and audio | About 105 illustrations, 350 voice clips, 15 animal sounds. Emoji and text-to-speech stand in. |
 
 ### Not built
-Language toggle (EN/MS) · AdMob ads · push notifications (prayer reminders) ·
-PDF progress report · `hooks/use-ads.ts` · `hooks/use-report.ts`.
-No i18n, AdMob, or `expo-notifications` dependency is installed yet.
+BM/English outside the games (Stage 4) · the UI redesign from the reference image (Stage 4).
 
 ### Housekeeping
-- `screens/` and `navigation/` are dead Phase-0 code, still tracked in git — delete.
-- `app.json` `slug` is still `ramadan-tracker` while the app name is MyLittleMuslim.
-- No automated tests anywhere.
+- `app.json` `slug` is still `ramadan-tracker`. It must match the Expo project, so the owner renames both together.
+- Tests cover logic only. Screens have no automated tests in the repo.
 
-When you complete a phase item, update both the checklist in [Plans.md](Plans.md) §11 and
+When you complete a phase item, update both the checklist in [Plans.md](Plans.md) §13 and
 the status table above.

@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import {
   View,
   Text,
@@ -9,7 +9,7 @@ import {
   Platform,
   ActivityIndicator,
 } from 'react-native';
-import { useLocalSearchParams } from 'expo-router';
+import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
 import { Ionicons } from '@expo/vector-icons';
@@ -18,19 +18,26 @@ import { useAuth } from '@/hooks/use-auth';
 import { useGoBack } from '@/hooks/use-go-back';
 import { useTheme } from '@/hooks/use-theme';
 import { Alert } from '@/services/alert';
+import { useAuthStore } from '@/store/auth-store';
 import { borderRadius, spacing, typography } from '@/constants/theme';
 
 const CODE_LENGTH = 6;
 
 export default function VerifyScreen() {
-  const { email } = useLocalSearchParams<{ email: string }>();
+  const email = useAuthStore((state) => state.pendingEmail);
   const { colors, isDark } = useTheme();
   const insets = useSafeAreaInsets();
+  const router = useRouter();
   const goBack = useGoBack('/(auth)/register');
   const { verifyOtp, resendVerification, isLoading } = useAuth();
 
   const [code, setCode] = useState<string[]>(Array(CODE_LENGTH).fill(''));
   const inputRefs = useRef<(TextInput | null)[]>([]);
+
+  // The email lives only in memory, so a browser refresh sends the parent back to register.
+  useEffect(() => {
+    if (!email) router.replace('/(auth)/register');
+  }, [email, router]);
 
   const handleChange = (text: string, index: number) => {
     const digit = text.replace(/[^0-9]/g, '');
@@ -174,7 +181,7 @@ export default function VerifyScreen() {
             style={styles.resendContainer}
           >
             <Text style={[styles.resendText, { color: colors.textSecondary }]}>
-              Didn't receive the code?{' '}
+              Didn&apos;t receive the code?{' '}
               <Text style={[styles.resendBold, { color: colors.primary }]}>Resend</Text>
             </Text>
           </TouchableOpacity>

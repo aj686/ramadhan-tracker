@@ -123,7 +123,7 @@ export default function PrayerScreen() {
   }, [logs, today, currentYear]);
 
   // Year-to-date summary
-  const yearTotal = getTotalPrayerCount();
+  const yearTotal = getTotalPrayerCount(currentYear);
   const yearStart = new Date(currentYear, 0, 1);
   const daysElapsed = Math.max(1, Math.floor((now.getTime() - yearStart.getTime()) / 86400000) + 1);
   const possibleSoFar = daysElapsed * 5;

@@ -21,7 +21,9 @@ import { useTheme } from '@/hooks/use-theme';
 import { useAuth } from '@/hooks/use-auth';
 import { useChildren } from '@/hooks/use-children';
 import { useRefetchOnForeground } from '@/hooks/use-refetch-on-foreground';
+import { AdBanner } from '@/components/ad-banner';
 import { Alert } from '@/services/alert';
+import { getCurrentSeason, getRamadanLabel } from '@/services/islamic-calendar';
 import { borderRadius, spacing, typography } from '@/constants/theme';
 import { Child } from '@/types';
 
@@ -136,7 +138,7 @@ export default function HomeScreen() {
         <View>
           <Text style={[styles.headerTitle, { color: colors.text }]}>MyLittleMuslim</Text>
           <Text style={[styles.headerSub, { color: colors.textSecondary }]}>
-            Ramadan 2026 — 1447H
+            {getRamadanLabel(getCurrentSeason())}
           </Text>
         </View>
         <View style={[styles.moonBadge, { backgroundColor: colors.primaryMuted }]}>
@@ -181,6 +183,8 @@ export default function HomeScreen() {
           )}
         />
       )}
+
+      <AdBanner />
 
       {/* FAB — add child */}
       {canAddChild && (

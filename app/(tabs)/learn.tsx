@@ -19,13 +19,13 @@ import type { LearningModule } from '@/types';
 const MODULES: LearningModule[] = [
   { id: 'animals',     title: 'Animals',             emoji: '🐾', color: '#22C55E', colorMuted: 'rgba(34,197,94,0.12)',   isPremium: false, itemCount: 30 },
   { id: 'allah_names', title: '99 Names of Allah',   emoji: '📿', color: '#8B5CF6', colorMuted: 'rgba(139,92,246,0.12)',  isPremium: false, itemCount: 99 },
-  { id: 'prophets',    title: 'Prophets & Rasul',    emoji: '👳', color: '#F59E0B', colorMuted: 'rgba(245,158,11,0.12)',  isPremium: false, itemCount: 25 },
+  { id: 'prophets',    title: 'Prophets & Rasul',    emoji: '📜', color: '#F59E0B', colorMuted: 'rgba(245,158,11,0.12)',  isPremium: false, itemCount: 25 },
   { id: 'transport',   title: 'Transport',           emoji: '🚗', color: '#06B6D4', colorMuted: 'rgba(6,182,212,0.12)',   isPremium: true,  itemCount: 25 },
   { id: 'countries',   title: 'Countries',           emoji: '🌍', color: '#3B82F6', colorMuted: 'rgba(59,130,246,0.12)',  isPremium: true,  itemCount: 30 },
 ];
 
 export default function LearnScreen() {
-  const { colors, isDark } = useTheme();
+  const { colors, game, isDark } = useTheme();
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const { isPremium } = useSubscription();
@@ -63,6 +63,24 @@ export default function LearnScreen() {
         contentContainerStyle={[styles.grid, { paddingBottom: insets.bottom + spacing.xxxl }]}
         showsVerticalScrollIndicator={false}
       >
+        {/* Kids games: free at launch */}
+        <TouchableOpacity
+          onPress={() => router.push('/games')}
+          activeOpacity={0.85}
+          style={styles.gamesCard}
+          accessibilityRole="button"
+          accessibilityLabel="Play and learn games for ages 2 to 6"
+        >
+          <LinearGradient colors={game.heroGradient} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.gamesGradient}>
+            <Text style={styles.gamesEmoji}>🎮</Text>
+            <View style={styles.cardInfo}>
+              <Text style={[styles.gamesTitle, { color: game.onPrimary }]}>Main & Belajar · Play & Learn</Text>
+              <Text style={[styles.gamesSub, { color: game.onPrimary }]}>26 games for ages 2–6</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={20} color={game.onPrimary} />
+          </LinearGradient>
+        </TouchableOpacity>
+
         {/* FREE section */}
         <Text style={[styles.sectionLabel, { color: colors.textMuted }]}>FREE</Text>
         {MODULES.filter(m => !m.isPremium).map(renderModuleCard)}
@@ -135,6 +153,20 @@ const styles = StyleSheet.create({
   grid: {
     paddingHorizontal: spacing.xl,
   },
+  gamesCard: {
+    borderRadius: borderRadius.xl,
+    overflow: 'hidden',
+    marginBottom: spacing.sm,
+  },
+  gamesGradient: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: spacing.lg,
+    gap: spacing.md,
+  },
+  gamesEmoji: { fontSize: 36 },
+  gamesTitle: { ...typography.headline, fontWeight: '700' },
+  gamesSub: { ...typography.caption, marginTop: 2 },
   sectionLabel: {
     ...typography.caption,
     fontWeight: '700',

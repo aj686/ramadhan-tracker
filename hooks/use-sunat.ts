@@ -1,14 +1,13 @@
 import { useCallback } from 'react';
 import { supabase } from '@/services/supabase';
 import { useSunatStore } from '@/store/sunat-store';
+import { getSunatFestivalDates } from '@/services/islamic-calendar';
 import { FetchOptions, SunatLog, SunatType } from '@/types';
 
-// ── Generate sunat dates for 2026 ────────────────────────────────────────────
+// ── Generate sunat dates for a year ──────────────────────────────────────────
 
 export function getSunatDates(year: number): Record<SunatType, string[]> {
   const isnin_khamis: string[] = [];
-  const syawal: string[] = [];
-  const arafah: string[] = [];
 
   // All Mondays (1) and Thursdays (4) of the year
   for (let month = 0; month < 12; month++) {
@@ -23,16 +22,7 @@ export function getSunatDates(year: number): Record<SunatType, string[]> {
     }
   }
 
-  // Syawal 2026: Eid ~April 1 → fast any 6 of April 2–30
-  if (year === 2026) {
-    for (let d = 2; d <= 30; d++) {
-      syawal.push(`${year}-04-${String(d).padStart(2, '0')}`);
-    }
-    // Arafah 2026: 9 Dhul Hijjah ≈ June 10
-    arafah.push(`${year}-06-10`);
-  }
-
-  return { isnin_khamis, syawal, arafah };
+  return { isnin_khamis, ...getSunatFestivalDates(year) };
 }
 
 export const SUNAT_TYPE_LABELS: Record<SunatType, string> = {
@@ -128,14 +118,15 @@ export const useSunat = (childId: string) => {
     [childLogs],
   );
 
-  const calculateStats = useCallback(() => {
+  const calculateStats = useCallback((year: number) => {
+    const prefix = `${year}-`;
     const byType: Record<SunatType, number> = {
       isnin_khamis: 0,
       syawal: 0,
       arafah: 0,
     };
     childLogs.forEach((l) => {
-      if (l.completed) byType[l.type] = (byType[l.type] || 0) + 1;
+      if (l.completed && l.date.startsWith(prefix)) byType[l.type] = (byType[l.type] || 0) + 1;
     });
     return {
       byType,

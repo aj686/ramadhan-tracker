@@ -7,6 +7,7 @@ import {
   ScrollView,
 } from 'react-native';
 import { useRouter } from 'expo-router';
+import Constants from 'expo-constants';
 import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
 import { Ionicons } from '@expo/vector-icons';
@@ -16,9 +17,10 @@ import { useAuth } from '@/hooks/use-auth';
 import { useSubscription } from '@/hooks/use-subscription';
 import { useThemeStore, ThemePreference } from '@/store/theme-store';
 import { Alert } from '@/services/alert';
+import { notificationsSupported } from '@/services/notifications';
 import { borderRadius, spacing, typography } from '@/constants/theme';
 
-const APP_VERSION = '1.0.0';
+const APP_VERSION = Constants.expoConfig?.version ?? '';
 
 export default function ProfileScreen() {
   const { colors, isDark } = useTheme();
@@ -211,11 +213,37 @@ export default function ProfileScreen() {
             <View style={[styles.cardContent, { backgroundColor: colors.glass, paddingVertical: spacing.sm }]}>
               <Text style={[styles.sectionTitle, { color: colors.text }]}>Account</Text>
 
+              {notificationsSupported && (
+                <TouchableOpacity style={styles.menuRow} onPress={() => router.push('/settings/reminders')}>
+                  <View style={[styles.menuIcon, { backgroundColor: colors.prayerMuted }]}>
+                    <Ionicons name="notifications-outline" size={18} color={colors.prayerColor} />
+                  </View>
+                  <Text style={[styles.menuLabel, { color: colors.text }]}>Prayer Reminders</Text>
+                  <Ionicons name="chevron-forward" size={16} color={colors.textMuted} />
+                </TouchableOpacity>
+              )}
+
+              <TouchableOpacity style={styles.menuRow} onPress={() => router.push('/privacy')}>
+                <View style={[styles.menuIcon, { backgroundColor: colors.primaryMuted }]}>
+                  <Ionicons name="shield-checkmark-outline" size={18} color={colors.primary} />
+                </View>
+                <Text style={[styles.menuLabel, { color: colors.text }]}>Privacy Policy</Text>
+                <Ionicons name="chevron-forward" size={16} color={colors.textMuted} />
+              </TouchableOpacity>
+
               <TouchableOpacity style={styles.menuRow} onPress={handleLogout}>
                 <View style={[styles.menuIcon, { backgroundColor: 'rgba(239,68,68,0.12)' }]}>
                   <Ionicons name="log-out-outline" size={18} color={colors.error} />
                 </View>
                 <Text style={[styles.menuLabel, { color: colors.error }]}>Logout</Text>
+                <Ionicons name="chevron-forward" size={16} color={colors.textMuted} />
+              </TouchableOpacity>
+
+              <TouchableOpacity style={styles.menuRow} onPress={() => router.push('/delete-account')}>
+                <View style={[styles.menuIcon, { backgroundColor: 'rgba(239,68,68,0.12)' }]}>
+                  <Ionicons name="trash-outline" size={18} color={colors.error} />
+                </View>
+                <Text style={[styles.menuLabel, { color: colors.error }]}>Delete Account</Text>
                 <Ionicons name="chevron-forward" size={16} color={colors.textMuted} />
               </TouchableOpacity>
             </View>

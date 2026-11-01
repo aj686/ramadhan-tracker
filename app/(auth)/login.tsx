@@ -66,7 +66,7 @@ export default function LoginScreen() {
             />
             <Text style={[styles.title, { color: colors.text }]}>MyLittleMuslim</Text>
             <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
-              Track your children's Ramadan journey
+              Track your children&apos;s Ramadan journey
             </Text>
           </View>
 
@@ -139,6 +139,14 @@ export default function LoginScreen() {
             </BlurView>
           </View>
 
+          <TouchableOpacity
+            onPress={() => router.push('/(auth)/forgot-password')}
+            disabled={isLoading}
+            style={styles.linkContainer}
+          >
+            <Text style={[styles.linkBold, { color: colors.primary }]}>Forgot password?</Text>
+          </TouchableOpacity>
+
           {/* Register Link */}
           <TouchableOpacity
             onPress={() => router.push('/(auth)/register')}
@@ -146,7 +154,7 @@ export default function LoginScreen() {
             style={styles.linkContainer}
           >
             <Text style={[styles.linkText, { color: colors.textSecondary }]}>
-              Don't have an account?{' '}
+              Don&apos;t have an account?{' '}
               <Text style={[styles.linkBold, { color: colors.primary }]}>Register</Text>
             </Text>
           </TouchableOpacity>

@@ -75,9 +75,11 @@ export const useQuran = (childId: string) => {
     [childLogs],
   );
 
-  const calculateStats = useCallback(() => {
-    const totalPages = childLogs.reduce((s, l) => s + l.pages_read, 0);
-    const daysWithReading = childLogs.filter((l) => l.pages_read > 0).length;
+  const calculateStats = useCallback((year: number) => {
+    const prefix = `${year}-`;
+    const yearLogs = childLogs.filter((l) => l.date.startsWith(prefix));
+    const totalPages = yearLogs.reduce((s, l) => s + l.pages_read, 0);
+    const daysWithReading = yearLogs.filter((l) => l.pages_read > 0).length;
     const avgPerDay =
       daysWithReading > 0 ? Math.round(totalPages / daysWithReading) : 0;
     const pct = Math.min(

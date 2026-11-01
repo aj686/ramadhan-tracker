@@ -1,8 +1,11 @@
+import { clearAllGameProgress } from '@/services/game/progress-storage';
 import { clearStoredAuthSession, readStoredAuthUser, supabase } from '@/services/supabase';
 import { useAuthStore } from '@/store/auth-store';
 import { useChildrenStore } from '@/store/children-store';
 import { useDoaStore } from '@/store/doa-store';
 import { useFastingStore } from '@/store/fasting-store';
+import { useGameProgressStore } from '@/store/game-progress-store';
+import { useGameSettingsStore } from '@/store/game-settings-store';
 import { usePrayerStore } from '@/store/prayer-store';
 import { useQuranStore } from '@/store/quran-store';
 import { useRewardsStore } from '@/store/rewards-store';
@@ -23,6 +26,9 @@ const clearUserData = () => {
   useDoaStore.getState().clearLogs();
   useRewardsStore.getState().clearRewards();
   useSubscriptionStore.getState().clearSubscription();
+  // Game progress stays on disk under its child id, so only the in-memory copy is cleared here.
+  useGameProgressStore.getState().clearProfiles();
+  useGameSettingsStore.getState().setActiveChildId(null);
 };
 
 const applySessionUser = (sessionUser: SessionUser | null) => {
@@ -175,6 +181,57 @@ export const useAuth = () => {
     }
   }, []);
 
+  // Always reports success for a valid request, so the form cannot reveal which emails have accounts.
+  const requestPasswordReset = useCallback(async (email: string) => {
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(email);
+      if (error && error.status !== 400 && error.status !== 422) throw error;
+      return { success: true };
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Could not send the code';
+      return { success: false, error: message };
+    }
+  }, []);
+
+  // The code signs the parent in, so the password must change in the same step.
+  // Otherwise the root layout would redirect to the tabs with the old password still set.
+  const resetPassword = useCallback(async (email: string, token: string, newPassword: string) => {
+    setLoading(true);
+    try {
+      const { error: verifyError } = await supabase.auth.verifyOtp({ email, token, type: 'recovery' });
+      if (verifyError) throw verifyError;
+
+      const { error: updateError } = await supabase.auth.updateUser({ password: newPassword });
+      if (updateError) throw updateError;
+
+      return { success: true };
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Could not reset the password';
+      return { success: false, error: message };
+    } finally {
+      setLoading(false);
+    }
+  }, [setLoading]);
+
+  // Runs in an Edge Function because deleting an auth user needs the service role.
+  // Children and every tracker row go with it through ON DELETE CASCADE.
+  const deleteAccount = useCallback(async () => {
+    try {
+      const { error } = await supabase.functions.invoke('delete-account', { method: 'POST' });
+      if (error) throw error;
+
+      await clearStoredAuthSession().catch(() => {});
+      await supabase.auth.signOut({ scope: 'local' }).catch(() => {});
+      await clearAllGameProgress().catch(() => {});
+      clearUserData();
+      storeLogout();
+      return { success: true };
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Could not delete the account';
+      return { success: false, error: message };
+    }
+  }, [storeLogout]);
+
   const logout = useCallback(async () => {
     let serverReached = false;
     try {
@@ -196,6 +253,9 @@ export const useAuth = () => {
     login,
     verifyOtp,
     resendVerification,
+    requestPasswordReset,
+    resetPassword,
+    deleteAccount,
     logout,
   };
 };

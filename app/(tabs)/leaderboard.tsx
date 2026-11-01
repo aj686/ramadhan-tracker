@@ -12,6 +12,7 @@ import { useSubscription } from '@/hooks/use-subscription';
 import { useRefetchOnForeground } from '@/hooks/use-refetch-on-foreground';
 import { Alert } from '@/services/alert';
 import { PremiumGate } from '@/components/premium-gate';
+import { getCurrentSeason, getRamadanDates, getSeasonYear } from '@/services/islamic-calendar';
 import { supabase } from '@/services/supabase';
 import { useFastingStore } from '@/store/fasting-store';
 import { usePrayerStore } from '@/store/prayer-store';
@@ -79,19 +80,31 @@ export default function LeaderboardScreen() {
     fetchAll({ silent: true });
   });
 
+  // Scores cover this Ramadan and this year's Solat, so every child starts fresh each year.
+  const season = getCurrentSeason();
+  const currentYear = new Date().getFullYear();
+  const ramadanDates = getRamadanDates(season);
+  const firstDate = ramadanDates[0];
+  const lastDate = ramadanDates[ramadanDates.length - 1];
+
   const ranked = useMemo(() => {
+    const prefix = `${currentYear}-`;
     return children
-      .map((child, idx) => ({
-        child,
-        idx,
-        score: computeScore(fastingLogs[child.id] || [], prayerLogs[child.id] || []),
-        fastDays: (fastingLogs[child.id] || []).filter((l) => l.status === 'full' || l.status === 'half').length,
-        prayers: (prayerLogs[child.id] || []).reduce(
-          (s, l) => s + [l.fajr, l.dhuhr, l.asr, l.maghrib, l.isha].filter(Boolean).length, 0,
-        ),
-      }))
+      .map((child, idx) => {
+        const fasting = (fastingLogs[child.id] || []).filter((l) => l.date >= firstDate && l.date <= lastDate);
+        const prayer = (prayerLogs[child.id] || []).filter((l) => l.date.startsWith(prefix));
+        return {
+          child,
+          idx,
+          score: computeScore(fasting, prayer),
+          fastDays: fasting.filter((l) => l.status === 'full' || l.status === 'half').length,
+          prayers: prayer.reduce(
+            (s, l) => s + [l.fajr, l.dhuhr, l.asr, l.maghrib, l.isha].filter(Boolean).length, 0,
+          ),
+        };
+      })
       .sort((a, b) => b.score - a.score);
-  }, [children, fastingLogs, prayerLogs]);
+  }, [children, fastingLogs, prayerLogs, firstDate, lastDate, currentYear]);
 
   return (
     <View style={styles.container}>
@@ -103,7 +116,9 @@ export default function LeaderboardScreen() {
       {/* Header */}
       <View style={[styles.header, { paddingTop: insets.top + spacing.md }]}>
         <Text style={[styles.headerTitle, { color: colors.text }]}>Leaderboard</Text>
-        <Text style={[styles.headerSub, { color: colors.textSecondary }]}>Ramadan 2026</Text>
+        <Text style={[styles.headerSub, { color: colors.textSecondary }]}>
+          Ramadan {getSeasonYear(season)} · Solat {currentYear}
+        </Text>
       </View>
 
       <PremiumGate feature="Family Leaderboard">

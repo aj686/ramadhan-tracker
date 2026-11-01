@@ -12,40 +12,24 @@
 
 import { serve } from 'https://deno.land/std@0.177.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { PLANS, toyyibpayBase, type PlanId } from '../_shared/toyyibpay.ts';
 
 const CORS_HEADERS = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, content-type',
+  'Access-Control-Allow-Headers': 'authorization, apikey, content-type, x-client-info',
 };
 
-const IS_SANDBOX = Deno.env.get('TOYYIBPAY_SANDBOX') !== 'false';
-const TOYYIBPAY_BASE = IS_SANDBOX
-  ? 'https://dev.toyyibpay.com'
-  : 'https://toyyibpay.com';
-
-const SECRET_KEY     = Deno.env.get('TOYYIBPAY_SECRET_KEY')!;
-const CATEGORY_CODE  = Deno.env.get('TOYYIBPAY_CATEGORY_CODE')!;
-const CALLBACK_URL   = Deno.env.get('PAYMENT_CALLBACK_URL')!;
-const RETURN_URL     = Deno.env.get('PAYMENT_RETURN_URL') ?? `${TOYYIBPAY_BASE}`;
-
-const PLANS = {
-  monthly: { label: 'MyLittleMuslim Premium (Monthly)', amount: 990 },
-  yearly:  { label: 'MyLittleMuslim Premium (Yearly)',  amount: 4990 },
-} as const;
-
-type PlanId = keyof typeof PLANS;
+const json = (body: unknown, status = 200) =>
+  new Response(JSON.stringify(body), {
+    status,
+    headers: { 'Content-Type': 'application/json', ...CORS_HEADERS },
+  });
 
 serve(async (req) => {
-  // Handle CORS preflight
-  if (req.method === 'OPTIONS') {
-    return new Response(null, { headers: CORS_HEADERS });
-  }
+  if (req.method === 'OPTIONS') return new Response(null, { headers: CORS_HEADERS });
 
-  // Auth check
   const authHeader = req.headers.get('Authorization');
-  if (!authHeader) {
-    return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: CORS_HEADERS });
-  }
+  if (!authHeader) return json({ error: 'Unauthorized' }, 401);
 
   const supabase = createClient(
     Deno.env.get('SUPABASE_URL')!,
@@ -55,95 +39,88 @@ serve(async (req) => {
   const { data: { user }, error: authError } = await supabase.auth.getUser(
     authHeader.replace('Bearer ', ''),
   );
+  if (authError || !user) return json({ error: 'Unauthorized' }, 401);
 
-  if (authError || !user) {
-    return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: CORS_HEADERS });
-  }
-
-  // Parse request body
   let plan: PlanId;
   try {
     const body = await req.json();
     plan = body.plan;
     if (!plan || !PLANS[plan]) throw new Error('Invalid plan');
   } catch {
-    return new Response(JSON.stringify({ error: 'Invalid request body. Provide { plan: "monthly" | "yearly" }' }), {
-      status: 400, headers: CORS_HEADERS,
-    });
+    return json({ error: 'Invalid request body. Provide { plan: "monthly" | "yearly" }' }, 400);
   }
 
   const planDetails = PLANS[plan];
-  const orderId = `MLM-${Date.now()}-${Math.random().toString(36).slice(2, 7).toUpperCase()}`;
+  const orderId = `MLM-${crypto.randomUUID()}`;
 
-  // Call ToyyibPay createBill API
+  // The pending row is saved first. If it cannot be saved, no bill is created,
+  // so nobody can ever pay for a subscription the callback would not be able to find.
+  const { data: pendingRow, error: insertError } = await supabase
+    .from('subscriptions')
+    .insert({
+      user_id: user.id,
+      plan,
+      status: 'pending',
+      order_id: orderId,
+      amount_rm: planDetails.amountSen / 100,
+    })
+    .select('id')
+    .single();
+
+  if (insertError || !pendingRow) {
+    console.error('Could not save pending subscription:', insertError?.message);
+    return json({ error: 'Could not start the payment. Please try again.' }, 500);
+  }
+
   const params = new URLSearchParams({
-    userSecretKey:            SECRET_KEY,
-    categoryCode:             CATEGORY_CODE,
-    billName:                 planDetails.label.slice(0, 30),
-    billDescription:          planDetails.label,
-    billPriceSetting:         '1',      // fixed price
-    billPayorInfo:            '1',      // collect payer info
-    billAmount:               String(planDetails.amount), // in sen
-    billReturnUrl:            RETURN_URL,
-    billCallbackUrl:          CALLBACK_URL,
-    billExternalReferenceNo:  orderId,
-    billTo:                   user.email ?? '',
-    billEmail:                user.email ?? '',
-    billPhone:                '0123456789',
-    billSplitPayment:         '0',
-    billSplitPaymentArgs:     '',
-    billPaymentMethod:        '0',      // 0=all, 1=FPX, 2=CC
-    billDisplayMerchant:      '1',
-    billContentEmail:         `Thank you for subscribing to MyLittleMuslim ${plan} plan!`,
-    billChargeToCustomer:     '1',
+    userSecretKey: Deno.env.get('TOYYIBPAY_SECRET_KEY')!,
+    categoryCode: Deno.env.get('TOYYIBPAY_CATEGORY_CODE')!,
+    billName: planDetails.label.slice(0, 30),
+    billDescription: planDetails.label,
+    billPriceSetting: '1',
+    // 0 means ToyyibPay does not require payer details from us, so we never send a made-up phone number.
+    billPayorInfo: '0',
+    billAmount: String(planDetails.amountSen),
+    billReturnUrl: Deno.env.get('PAYMENT_RETURN_URL') ?? toyyibpayBase(),
+    billCallbackUrl: Deno.env.get('PAYMENT_CALLBACK_URL')!,
+    billExternalReferenceNo: orderId,
+    billEmail: user.email ?? '',
+    billSplitPayment: '0',
+    billSplitPaymentArgs: '',
+    billPaymentMethod: '0',
+    billDisplayMerchant: '1',
+    billContentEmail: `Thank you for subscribing to MyLittleMuslim ${plan} plan!`,
+    billChargeToCustomer: '1',
   });
 
   let billCode: string;
   try {
-    const tpRes = await fetch(`${TOYYIBPAY_BASE}/index.php/api/createBill`, {
+    const response = await fetch(`${toyyibpayBase()}/index.php/api/createBill`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
       body: params.toString(),
     });
+    const data = await response.json();
 
-    const tpData = await tpRes.json();
-
-    if (!Array.isArray(tpData) || !tpData[0]?.BillCode) {
-      console.error('ToyyibPay error:', tpData);
-      return new Response(JSON.stringify({ error: 'Failed to create payment bill', detail: tpData }), {
-        status: 502, headers: CORS_HEADERS,
-      });
+    if (!Array.isArray(data) || !data[0]?.BillCode) {
+      console.error('ToyyibPay rejected the bill, status:', response.status);
+      return json({ error: 'Failed to create payment bill' }, 502);
     }
-
-    billCode = tpData[0].BillCode as string;
+    billCode = data[0].BillCode as string;
   } catch (err) {
-    console.error('ToyyibPay fetch error:', err);
-    return new Response(JSON.stringify({ error: 'Payment gateway unreachable' }), {
-      status: 503, headers: CORS_HEADERS,
-    });
+    console.error('ToyyibPay unreachable:', err instanceof Error ? err.message : 'unknown error');
+    return json({ error: 'Payment gateway unreachable' }, 503);
   }
 
-  // Store pending subscription in Supabase
-  const { error: dbError } = await supabase.from('subscriptions').insert({
-    user_id:   user.id,
-    plan,
-    status:    'pending',
-    bill_code: billCode,
-    order_id:  orderId,
-    amount_rm: planDetails.amount / 100,
-  });
+  const { error: updateError } = await supabase
+    .from('subscriptions')
+    .update({ bill_code: billCode })
+    .eq('id', pendingRow.id);
 
-  if (dbError) {
-    console.error('DB insert error:', dbError);
-    // Don't fail — bill was created, return it anyway
+  if (updateError) {
+    console.error('Could not save bill code:', updateError.message);
+    return json({ error: 'Could not start the payment. Please try again.' }, 500);
   }
 
-  return new Response(
-    JSON.stringify({
-      billCode,
-      paymentUrl: `${TOYYIBPAY_BASE}/${billCode}`,
-      orderId,
-    }),
-    { headers: { 'Content-Type': 'application/json', ...CORS_HEADERS } },
-  );
+  return json({ billCode, paymentUrl: `${toyyibpayBase()}/${billCode}`, orderId });
 });

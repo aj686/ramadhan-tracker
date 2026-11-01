@@ -1,15 +1,18 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
-  View, Text, TouchableOpacity, StyleSheet, ScrollView,
+  ActivityIndicator, View, Text, TouchableOpacity, StyleSheet, ScrollView,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
 import { Ionicons } from '@expo/vector-icons';
+import * as WebBrowser from 'expo-web-browser';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useGoBack } from '@/hooks/use-go-back';
 import { useTheme } from '@/hooks/use-theme';
 import { useSubscription } from '@/hooks/use-subscription';
-import { COMING_SOON_LABEL, PLANS } from '@/services/toyyibpay';
+import { Alert } from '@/services/alert';
+import { COMING_SOON_LABEL, PAYMENT_OPEN, PLANS, type PlanId } from '@/services/toyyibpay';
+import { useSubscriptionStore } from '@/store/subscription-store';
 import { borderRadius, spacing, typography } from '@/constants/theme';
 
 const FEATURES = [
@@ -25,7 +28,9 @@ export default function UpgradeScreen() {
   const { colors, isDark } = useTheme();
   const insets = useSafeAreaInsets();
   const goBack = useGoBack('/(tabs)');
-  const { isPremium } = useSubscription();
+  const { isPremium, isChecking, createPayment, checkSubscription } = useSubscription();
+  const [selectedPlan, setSelectedPlan] = useState<PlanId>('yearly');
+  const [isPaying, setIsPaying] = useState(false);
 
   // If user is already premium, go back
   useEffect(() => {
@@ -33,6 +38,28 @@ export default function UpgradeScreen() {
   }, [isPremium, goBack]);
 
   if (isPremium) return null;
+
+  const handleSubscribe = async () => {
+    if (isPaying) return;
+    setIsPaying(true);
+    try {
+      const { paymentUrl } = await createPayment(selectedPlan);
+      await WebBrowser.openBrowserAsync(paymentUrl);
+      await checkSubscription();
+    } catch (err) {
+      Alert.alert('Could not start the payment', err instanceof Error ? err.message : 'Please try again.');
+    } finally {
+      setIsPaying(false);
+    }
+  };
+
+  const handleCheckStatus = async () => {
+    await checkSubscription();
+    // Read fresh: `isPremium` in this closure is from before the check.
+    if (!useSubscriptionStore.getState().isPremium) {
+      Alert.alert('Not active yet', 'No active subscription found. If you have paid, please wait a moment and try again.');
+    }
+  };
 
   return (
     <View style={styles.container}>
@@ -61,18 +88,22 @@ export default function UpgradeScreen() {
           <Text style={[styles.heroSub, { color: colors.textSecondary }]}>
             More features to help your child build great Islamic habits
           </Text>
-          <View style={[styles.comingSoonBadge, { backgroundColor: colors.rewardMuted }]}>
-            <Text style={[styles.comingSoonBadgeText, { color: colors.text }]}>
-              {COMING_SOON_LABEL}
-            </Text>
-          </View>
+          {!PAYMENT_OPEN && (
+            <View style={[styles.comingSoonBadge, { backgroundColor: colors.rewardMuted }]}>
+              <Text style={[styles.comingSoonBadgeText, { color: colors.text }]}>
+                {COMING_SOON_LABEL}
+              </Text>
+            </View>
+          )}
         </View>
 
         {/* Features list */}
         <View style={[styles.featuresCard, { borderColor: colors.glassBorder, shadowColor: colors.glassShadow }]}>
           <BlurView intensity={60} tint={isDark ? 'dark' : 'light'} style={styles.blur}>
             <View style={[styles.featuresContent, { backgroundColor: colors.glass }]}>
-              <Text style={[styles.featuresTitle, { color: colors.text }]}>{"What's coming"}</Text>
+              <Text style={[styles.featuresTitle, { color: colors.text }]}>
+                {PAYMENT_OPEN ? 'What you get' : "What's coming"}
+              </Text>
               {FEATURES.map((f, i) => (
                 <View key={i} style={styles.featureRow}>
                   <View style={[styles.featureIcon, { backgroundColor: `${f.color}20` }]}>
@@ -85,48 +116,84 @@ export default function UpgradeScreen() {
           </BlurView>
         </View>
 
-        <Text style={[styles.sectionLabel, { color: colors.text }]}>Planned pricing</Text>
+        <Text style={[styles.sectionLabel, { color: colors.text }]}>
+          {PAYMENT_OPEN ? 'Choose a plan' : 'Planned pricing'}
+        </Text>
         <View style={styles.plansRow}>
-          {Object.values(PLANS).map((plan) => (
+          {Object.values(PLANS).map((plan) => {
+            const isSelected = PAYMENT_OPEN && selectedPlan === plan.id;
+            return (
+              <TouchableOpacity
+                key={plan.id}
+                disabled={!PAYMENT_OPEN}
+                activeOpacity={0.8}
+                onPress={() => setSelectedPlan(plan.id)}
+                accessibilityState={{ selected: isSelected, disabled: !PAYMENT_OPEN }}
+                style={[
+                  styles.planCard,
+                  {
+                    borderColor: isSelected ? colors.rewardColor : colors.glassBorder,
+                    backgroundColor: colors.glass,
+                    shadowColor: colors.glassShadow,
+                  },
+                ]}
+              >
+                {plan.savings && (
+                  <View style={[styles.savingsBadge, { backgroundColor: colors.rewardColor }]}>
+                    <Text style={styles.savingsText}>{plan.savings}</Text>
+                  </View>
+                )}
+                <Text style={[styles.planLabel, { color: colors.text }]}>{plan.label}</Text>
+                <Text style={[styles.planPrice, { color: colors.rewardColor }]}>{plan.price}</Text>
+                <Text style={[styles.planPeriod, { color: colors.textMuted }]}>{plan.period}</Text>
+              </TouchableOpacity>
+            );
+          })}
+        </View>
+
+        {PAYMENT_OPEN ? (
+          <>
+            <TouchableOpacity
+              style={[styles.subscribeBtn, { backgroundColor: colors.rewardColor }]}
+              onPress={handleSubscribe}
+              disabled={isPaying}
+              accessibilityRole="button"
+            >
+              {isPaying ? (
+                <ActivityIndicator color={colors.textOnPrimary} />
+              ) : (
+                <Text style={[styles.subscribeText, { color: colors.textOnPrimary }]}>Subscribe</Text>
+              )}
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.checkBtn}
+              onPress={handleCheckStatus}
+              disabled={isChecking}
+              accessibilityRole="button"
+            >
+              <Text style={[styles.checkText, { color: colors.textSecondary }]}>Check Payment Status</Text>
+            </TouchableOpacity>
+          </>
+        ) : (
+          <>
             <View
-              key={plan.id}
               style={[
-                styles.planCard,
-                {
-                  borderColor: colors.glassBorder,
-                  backgroundColor: colors.glass,
-                  shadowColor: colors.glassShadow,
-                },
+                styles.comingSoonBar,
+                { backgroundColor: colors.backgroundSecondary, borderColor: colors.border },
               ]}
             >
-              {plan.savings && (
-                <View style={[styles.savingsBadge, { backgroundColor: colors.rewardColor }]}>
-                  <Text style={styles.savingsText}>{plan.savings}</Text>
-                </View>
-              )}
-              <Text style={[styles.planLabel, { color: colors.text }]}>{plan.label}</Text>
-              <Text style={[styles.planPrice, { color: colors.rewardColor }]}>{plan.price}</Text>
-              <Text style={[styles.planPeriod, { color: colors.textMuted }]}>{plan.period}</Text>
+              <Ionicons name="time-outline" size={20} color={colors.textSecondary} />
+              <Text style={[styles.comingSoonBarText, { color: colors.textSecondary }]}>
+                {COMING_SOON_LABEL}
+              </Text>
             </View>
-          ))}
-        </View>
 
-        <View
-          style={[
-            styles.comingSoonBar,
-            { backgroundColor: colors.backgroundSecondary, borderColor: colors.border },
-          ]}
-        >
-          <Ionicons name="time-outline" size={20} color={colors.textSecondary} />
-          <Text style={[styles.comingSoonBarText, { color: colors.textSecondary }]}>
-            {COMING_SOON_LABEL}
-          </Text>
-        </View>
-
-        {/* Fine print */}
-        <Text style={[styles.finePrint, { color: colors.textSecondary }]}>
-          Payment is not open yet. Premium will open here when it is ready.
-        </Text>
+            {/* Fine print */}
+            <Text style={[styles.finePrint, { color: colors.textSecondary }]}>
+              Payment is not open yet. Premium will open here when it is ready.
+            </Text>
+          </>
+        )}
       </ScrollView>
     </View>
   );
@@ -187,5 +254,12 @@ const styles = StyleSheet.create({
     marginBottom: spacing.md,
   },
   comingSoonBarText: { ...typography.headline },
+  subscribeBtn: {
+    minHeight: 54, alignItems: 'center', justifyContent: 'center',
+    borderRadius: borderRadius.xl, marginBottom: spacing.sm,
+  },
+  subscribeText: { ...typography.headline, fontWeight: '700' },
+  checkBtn: { minHeight: 44, alignItems: 'center', justifyContent: 'center', marginBottom: spacing.md },
+  checkText: { ...typography.subhead, fontWeight: '600' },
   finePrint: { ...typography.caption, textAlign: 'center', lineHeight: 18 },
 });

@@ -3,6 +3,8 @@ import { supabase } from '@/services/supabase';
 import { useChildrenStore } from '@/store/children-store';
 import { useAuthStore } from '@/store/auth-store';
 import { useSubscriptionStore } from '@/store/subscription-store';
+import { useGameProgressStore } from '@/store/game-progress-store';
+import { removeProfileProgress } from '@/services/game/progress-storage';
 import { Child, CreateChildInput, FetchOptions, UpdateChildInput } from '@/types';
 
 // Free tier: 2 children. Premium: unlimited.
@@ -137,6 +139,8 @@ export const useChildren = () => {
       if (deleteError) throw deleteError;
 
       removeChild(id);
+      useGameProgressStore.getState().removeProfile(id);
+      await removeProfileProgress(id).catch(() => {});
       return { success: true };
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to delete child';

@@ -1,6 +1,6 @@
 # MyLittleMuslim — Master Development Plan
 
-> Last updated: 2026-03-01 (Phase 2 implementation)
+> Last updated: 2026-11-01 (Stages 1–3 of §13). §13 is the current roadmap; older sections are history.
 > Stack: React Native (Expo), Supabase, Zustand, TypeScript
 > Current branch: `master`
 
@@ -19,6 +19,8 @@
 9. [Component Inventory](#9-component-inventory)
 10. [Design System](#10-design-system)
 11. [Implementation Checklist](#11-implementation-checklist)
+12. [Current Status](#12-current-status--2026-03-15)
+13. [Roadmap — Notes, Stages and Later Development](#13-roadmap--notes-stages-and-later-development)
 
 ---
 
@@ -29,7 +31,7 @@
 | App Name      | **MyLittleMuslim**                              |
 | Old Name      | Ramadan Tracker (replaced everywhere)           |
 | Target Users  | Malaysian Muslim parents with young children    |
-| Age of Kids   | 6–15 years                                      |
+| Age of Kids   | 2–15 years (games: 2–6)                         |
 | Language      | English (primary), Malay terms for features     |
 | Platform      | Android (primary), iOS (secondary)              |
 | Monetization  | Freemium — AdMob (free) + subscription (premium)|
@@ -48,7 +50,8 @@
 | AdMob ads shown                  | Yes           |
 
 > **IMPORTANT:** Custom reward (money & custom text) is FREE.
-> Applies to Puasa Ramadhan + Solat only. Premium trackers get their own reward config.
+> Rewards currently pay on Puasa Ramadhan only. Rewards for Solat and premium trackers were planned
+> here but never built: see the decision in §13.7.
 
 ### PREMIUM — RM9.90/bulan or RM49.90/tahun
 | Feature                          | Notes                           |
@@ -136,8 +139,8 @@ All premium screens wrapped in `PremiumGate` — functional, gated until Phase 3
 **Screen:** `app/child/[id]/sunat.tsx`
 - 3 type tabs: **Isnin & Khamis** | **6 Syawal** | **Arafah**
 - Isnin & Khamis: all Mondays + Thursdays of year, grouped by month
-- Syawal 2026: April 2–30 (any 6 days picked)
-- Arafah 2026: June 10 (single day)
+- Syawal: 2–29 Syawal, any 6 days picked (dates from `services/islamic-calendar.ts`)
+- Arafah: 9 Zulhijjah, single day (same table)
 - Each date: date label + `[Done]` toggle button
 - Stats card: total done, per-type count
 
@@ -425,59 +428,9 @@ prayer_log   (id, child_id, date, fajr, dhuhr, asr, maghrib, isha)  UNIQUE (chil
 rewards      (id, parent_id, full_day_amount, half_day_amount, reward_type, custom_reward_full, custom_reward_half)
 ```
 
-### Phase 2 Tables — Run in Supabase SQL Editor
-```sql
--- Sunat fasting log
-create table if not exists sunat_log (
-  id         uuid primary key default uuid_generate_v4(),
-  child_id   uuid references children(id) on delete cascade,
-  date       date not null,
-  type       text check (type in ('isnin_khamis','syawal','arafah')) not null,
-  completed  boolean default false,
-  unique (child_id, date, type)
-);
-alter table sunat_log enable row level security;
-create policy "Users manage own sunat logs"
-  on sunat_log for all using (
-    exists (select 1 from children where children.id = sunat_log.child_id
-            and children.parent_id = auth.uid())
-  );
-
--- Quran reading log
-create table if not exists quran_log (
-  id         uuid primary key default uuid_generate_v4(),
-  child_id   uuid references children(id) on delete cascade,
-  date       date not null,
-  pages_read int default 0,
-  unique (child_id, date)
-);
-alter table quran_log enable row level security;
-create policy "Users manage own quran logs"
-  on quran_log for all using (
-    exists (select 1 from children where children.id = quran_log.child_id
-            and children.parent_id = auth.uid())
-  );
-
--- Doa harian log
-create table if not exists doa_log (
-  id               uuid primary key default uuid_generate_v4(),
-  child_id         uuid references children(id) on delete cascade,
-  date             date not null,
-  doa_makan        boolean default false,
-  doa_tidur        boolean default false,
-  doa_masuk_rumah  boolean default false,
-  doa_keluar_rumah boolean default false,
-  doa_tandas       boolean default false,
-  doa_kenderaan    boolean default false,
-  unique (child_id, date)
-);
-alter table doa_log enable row level security;
-create policy "Users manage own doa logs"
-  on doa_log for all using (
-    exists (select 1 from children where children.id = doa_log.child_id
-            and children.parent_id = auth.uid())
-  );
-```
+### Phase 2 Tables
+Moved to [supabase/migrations/005_phase2_logs.sql](supabase/migrations/005_phase2_logs.sql): `sunat_log`,
+`quran_log`, `doa_log`. Safe to re-run if the old inline SQL already ran.
 
 ---
 
@@ -559,7 +512,7 @@ BlurView intensity: 60
 - [x] Update app/child/[id]/index.tsx — streak chip + Phase 2 navigation
 - [x] Update app/(tabs)/_layout.tsx — 4th tab: Leaderboard
 - [x] Update app/_layout.tsx — new routes
-- [x] Supabase: run Phase 2 SQL (sunat_log, quran_log, doa_log tables)
+- [ ] Supabase: not recorded whether the Phase 2 SQL ran. Run `005_phase2_logs.sql` (§13.7)
 
 ### Phase 3 ✅ ToyyibPay Payment — 2026-03-02
 - [x] supabase/migrations/004_subscriptions.sql
@@ -624,8 +577,8 @@ BlurView intensity: 60
 - [x] PWA layer: public/ (index.html, manifest, icons, register-sw, _headers), workbox-config.js, wrangler.jsonc
 - [x] scripts/web-postexport.js (CSP host, build ID, build check), scripts/sw-kill.js (recovery)
 - [x] eas-update.yml: `paths-ignore` for web-only files and `**.md`
-- [ ] ⚠️ TEST: Android regression on a device before any push
-- [ ] ⚠️ RELEASE: publish the shared fixes to Android (workflow_dispatch) before web goes live
+- [ ] ⚠️ TEST: Android regression on a device
+- [ ] ⚠️ RELEASE: `eas build` for the shared fixes before web goes live. OTA alone cannot do it (§13.1)
 - [ ] ⚠️ DEPLOY: connect Cloudflare Workers Builds; set `EXPO_PUBLIC_SUPABASE_URL`, `EXPO_PUBLIC_SUPABASE_ANON_KEY`, `NODE_VERSION=22`
 - [ ] ⚠️ TEST: live Cloudflare address before sharing it: icon fonts, deep links, `_headers`, no CSP violations, login and saves
 - [ ] ⚠️ TEST: two devices on one account; iPhone Safari and Android Chrome install
@@ -633,6 +586,8 @@ BlurView intensity: 60
 ---
 
 ## 12. Current Status — 2026-03-15
+
+> Historical. The current status is in [CLAUDE.md](CLAUDE.md) §6 and §13 below.
 
 ### WORKING (ready for users)
 - Register / Login (no email verification — instant access)
@@ -668,4 +623,145 @@ BlurView intensity: 60
 
 ---
 
-*End of Plans.md — updated 2026-03-15 (Phase 5 bug fixes + status overview)*
+## 13. Roadmap — Notes, Stages and Later Development
+
+> Written 2026-11-01. Order set by the owner: unfinished work first, games next, UI/UX last.
+> Sizes are estimates: S = up to 1 day, M = 2–4 days, L = 5+ days.
+
+### 13.1 Vital notes
+
+1. **Android is behind.** CI skipped the OTA publish for the last two commits (`8fdfa36`, `271edc3`) because they touched native files, so phones do not have the two-device fix. This needs a new `eas build`, and web has to wait for it.
+2. **Ramadan is hardcoded to 2026.** The tracker must be fixed before the next Ramadan, about 8 Feb 2027 (estimate), roughly 14 weeks from this note.
+3. **Missing account basics.** No password reset, account deletion or privacy policy. Play likely requires the last two: confirm in Play Console.
+4. **Games need more than code.** About 105 illustrations, about 350 voice clips and 15 licensed animal sounds. Emoji and text-to-speech can stand in during the build, but nothing replaces the animal sounds.
+
+### 13.2 Stage 0 — Decisions (recommendations in use unless the owner changes them)
+
+| Decision | In use | Why |
+|---|---|---|
+| Age range | Widen from 6–15 to 2–15 in the docs and Play listing | An undeclared younger audience is a policy risk |
+| Where games live | Inside parent login, full screen, parental gate on exit | No accounts for under-6s, no auth changes |
+| Free or premium | All games free at launch | Upgrade cannot take payment, so a lock would be a dead button |
+| Progress | On the device, per child, no personal details | Fits the brief and per-child data; stars do not sync between devices yet |
+| Language | BM/English in games first, the rest of the app last | 277 strings across 24 files, and the redesign touches those screens anyway |
+| Islamic content | Hijaiyah as the first pack after launch | The brief lists none, and it needs reviewed recordings |
+| Mascot and art | Cat rather than panda, modest dress, a girl in tudung; ustaz/ustazah review before paying | Some families object to images of living beings; include the dog entry in that review |
+| Tabs | Home, Learn (Quiz inside), Rewards, Profile; Leaderboard linked from Rewards | Image has 4 tabs; free users only see a lock on Leaderboard |
+| Colours | Purple for the app, category colours inside trackers, darkened for contrast | Most current colours fail contrast with white text |
+| Cards and tab bar | Follow the image and update the CLAUDE.md design rules | Solid cards and a rounded tab bar conflict with those rules |
+| Welcome screen | Logged-out users only, "Get started" and "I have an account" | Parents create the accounts, not children |
+| Home greeting | "Assalamualaikum!" on Home, "Hi, {child}" on the dashboard and games | The app does not store the parent's name |
+
+### 13.3 Stage 1 — Finish and fix what exists
+
+- [x] 1. Delete `screens/`, `navigation/` and 3 unused components; fix type and lint errors (S)
+- [x] 2. Remove the 2026 lock: Puasa dates, Solat stats that can pass 100%, Syawal and Arafah (M)
+- [x] 3. Fix premium gates: streak shown to free users; Sunat, Quran and Doa always locked (S)
+- [x] 4. Write migration `005` for Sunat, Quran and Doa, safe to re-run (S) — owner runs it
+- [x] 5. Replace the 👳 Prophets icon with a non-figurative one (S)
+- [x] 6. Password reset, account deletion and privacy policy (M) — owner deploys, see §13.7
+- [x] 7. Move the email out of the register URL, ready for email verification (S)
+- [ ] 8. Device test, then `eas build` (M) — owner
+- [ ] 9. Connect Cloudflare and test the live web app, after item 8 (S) — owner
+- [x] 10. Correct the stale parts of CLAUDE.md and Plans.md (S)
+
+### 13.4 Stage 2 — Kids games
+
+26 activities on 5 reusable game types. Games use the reference image's look from the start.
+
+- [ ] 11. Commission art, audio and animal sounds; review BM text (S to start) — owner
+- [x] 12. First playable: content format, game logic, audio, BM/English, game shell, Animal Sounds, Colour Sorting (L)
+- [x] 13. Kids home, age groups, navigation, progress, parental gate (M)
+- [x] 14. The other 16 multiple-choice games (M)
+- [x] 15. Match the Letters, Match the Shapes, Match the Correct Item (M)
+- [x] 16. Arrange Letters, Puzzle (M)
+- [x] 17. Word Tracing, Connect the Dots, Colour the Letters (L)
+- [x] 18. Journey 2 difficulty, hints and spelling (M)
+- [ ] 19. Final media, device tests, Play items (M) — owner. Done in code: no ads in games; microphone and advertising-id permissions blocked
+
+### 13.5 Stage 3 — Remaining unbuilt features
+
+- [x] 20. ToyyibPay: the 3 security fixes and client flow restored behind `PAYMENT_OPEN` (L). Sandbox test is the owner's, see §13.7
+- [x] 21. Prayer reminders: local notifications, settings, calculated prayer times (L). No FCM or server needed
+- [x] 22. AdMob with child-directed settings, kept out of games (M). Stays off until real ids are set
+- [x] 23. PDF progress report (M)
+- [ ] 24. Rewards scope: decision needed, see §13.7. The doc now states what really happens
+- [x] 25. Housekeeping: Profile version, README, reset script removed, first tests (104). Slug is the owner's, see §13.7
+
+### 13.6 Stage 4 — UI/UX from the reference image (last)
+
+Primary `#7851FA`, background `#F9F8FD`, font Fredoka, plus dark-mode versions.
+
+- [ ] 26. Swap theme colours and replace 16 gradient backgrounds (S)
+- [ ] 27. Add Fredoka and move 74 font weight and size overrides into the theme (M)
+- [ ] 28. Replace the remaining 82 or so hardcoded colours in screens (M)
+- [ ] 29. Shared components: soft card, pill button, icon button, greeting header, hero card, category card, avatar, Today card (M)
+- [ ] 30. New Welcome screen, login/register/verify, tab bar (M, then S each)
+- [ ] 31. Home (L)
+- [ ] 32. Learn and modules, Profile, Rewards, Upgrade, Leaderboard, child dashboard (S–M each)
+- [ ] 33. Trackers: keep the grids, add a Today card with larger tap targets (S–M each)
+- [ ] 34. App icon, splash and web theme colours; `app.json` change needs a build (S)
+- [ ] 35. Final art and CLAUDE.md design rules (S)
+- [ ] 36. BM/English across the rest of the app (L)
+
+### 13.7 Later development — needs the owner
+
+Code cannot do these. Nothing from Stages 1–3 is committed, pushed or deployed yet.
+
+**1. Before any release**
+- [ ] Review the changes, then commit. `app.json` and `package.json` changed, so that push skips OTA by design.
+- [ ] Test on a real Android phone. Nothing has run on a device yet: drag, tracing, speech, sounds, notifications and PDF sharing were only tested on web, or not at all.
+
+**2. Supabase**
+- [ ] Run `supabase/migrations/005_phase2_logs.sql` in the SQL Editor, or `supabase db push`. Safe if the old SQL already ran.
+- [ ] `supabase functions deploy delete-account`
+- [ ] Auth > Email Templates > Reset Password: add `{{ .Token }}`, because the app asks for a code. Do the same for Confirm Signup before turning email verification on.
+- [ ] Set up custom SMTP. Supabase's built-in sender is heavily limited, so password reset will not work reliably for real parents without it.
+
+**3. Android, then web, in this order**
+- [ ] `eas build --profile production --platform android`. This is what finally delivers the two-device fix (§13.1).
+- [ ] Check the built app's permissions: no `RECORD_AUDIO`, no `AD_ID`.
+- [ ] Connect Cloudflare Workers Builds and test the live address (§11 Phase 6). Only after Android.
+
+**4. Dates, by about December 2026**
+- [ ] Confirm the expected dates in `services/islamic-calendar.ts` for 1448 (Ramadan 8 Feb 2027, Hari Raya 10 Mar, Arafah 16 May), and set `confirmed: true` once JAKIM announces. The tracker shows them as expected until then. Ramadan 2026 stays on its original dates because saved logs use them.
+
+**5. Play Console**
+- [ ] Update target age to include under-13s, which brings in the Families Policy. Confirm the current requirements there.
+- [ ] Privacy policy URL: `https://<your-web-address>/privacy`. Data deletion URL: `https://<your-web-address>/delete-account`.
+- [ ] Complete Data Safety to match `constants/legal.ts`.
+- [ ] Set `SUPPORT_EMAIL` in `constants/legal.ts`. The contact line stays hidden until then, and a privacy policy needs one.
+- [ ] Have the privacy policy reviewed. It is a draft, in BM and English, written from what the app really collects.
+
+**6. Art and audio for the games** (emoji and text-to-speech stand in until then)
+- [ ] About 105 illustrations: 8 shapes, 48 fruits, occupations, body parts and clothing, 27 animals and vehicles, 6 puzzle scenes, 10 category cards, 2 age cards, 5–6 mascot poses.
+- [ ] About 350 voice clips: 258 words in both languages, 90 prompts and feedback.
+- [ ] 15 licensed animal sounds. The keys are listed in `services/game/media.ts`. Until then a voice reads the sound word, such as "Moo".
+- [ ] Have someone fluent review all BM text. Animal sound words and labels like `betis` and `berlian` were my best attempt.
+- [ ] Ustaz or ustazah review before paying for character art.
+- [ ] Register files in `services/game/media.ts` and add `image` or `audio` keys to `data/games/items.ts`. No game code changes.
+
+**7. AdMob, when you want ads on**
+- [ ] Replace the sample app ids in `app.json` (they are Google's public test ids), and set unit ids in `constants/ads.ts`. Ads stay fully off while those are empty. Changing `app.json` needs a new build.
+- [ ] Turn on the child-directed settings in the AdMob console too.
+
+**8. Payment, when you want it open**
+- [ ] `supabase functions deploy create-payment`
+- [ ] `supabase functions deploy payment-callback --no-verify-jwt`
+- [ ] `supabase functions deploy payment-return --no-verify-jwt`
+- [ ] `supabase secrets set TOYYIBPAY_SECRET_KEY=<key> TOYYIBPAY_CATEGORY_CODE=<code> TOYYIBPAY_SANDBOX=true PAYMENT_CALLBACK_URL=https://<project>.supabase.co/functions/v1/payment-callback PAYMENT_RETURN_URL=https://<project>.supabase.co/functions/v1/payment-return`
+- [ ] Test in the sandbox: a paid order activates, a replayed callback changes nothing, and a failed payment leaves it pending. Confirm `billpaymentAmount` really is in ringgit and that `billPayorInfo=0` works without a phone number.
+- [ ] Only then set `PAYMENT_OPEN = true` in `services/toyyibpay.ts` and `TOYYIBPAY_SANDBOX=false`.
+
+**9. Your decisions**
+- [ ] Stage 0 (§13.2): my recommendations are in use. Tell me if you want any changed.
+- [ ] Rewards: only fasting pays, though this plan once promised Solat and premium rewards. Build it or leave it. I left it and corrected the doc.
+- [ ] Child limit: 2 free children is only enforced in the app, so a modified client could add more. A database trigger would close it.
+- [ ] Slug: `app.json` still says `ramadan-tracker`. It must match the Expo project, so rename both together or leave it, since users never see it.
+- [ ] Dog entry: it stays in the Learn module's animal list and is already left out of the games. Decide with the ustaz or ustazah review.
+- [ ] Hijaiyah: first content pack after launch. Not started.
+- [ ] `npm audit` reports 2 critical issues, in `shell-quote` and `tar`, which come through other tools rather than your code. Worth a look, but `--force` can break the Expo version pins, so I left it.
+
+---
+
+*End of Plans.md — updated 2026-11-01 (roadmap and vital notes)*

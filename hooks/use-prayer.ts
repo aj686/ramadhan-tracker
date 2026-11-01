@@ -98,8 +98,11 @@ export const usePrayer = (childId: string) => {
     return [log.fajr, log.dhuhr, log.asr, log.maghrib, log.isha].filter(Boolean).length;
   }, [childLogs]);
 
-  const getTotalPrayerCount = useCallback((): number => {
+  // One calendar year, to match the year-to-date denominator (daysElapsed * 5).
+  const getTotalPrayerCount = useCallback((year: number): number => {
+    const prefix = `${year}-`;
     return childLogs.reduce((total, log) => {
+      if (!log.date.startsWith(prefix)) return total;
       return total + [log.fajr, log.dhuhr, log.asr, log.maghrib, log.isha].filter(Boolean).length;
     }, 0);
   }, [childLogs]);

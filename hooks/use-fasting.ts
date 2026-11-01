@@ -3,30 +3,15 @@ import { supabase } from '@/services/supabase';
 import { useFastingStore } from '@/store/fasting-store';
 import { FastingLog, FastingStatus, ChildStats, FetchOptions } from '@/types';
 import { useRewardsStore } from '@/store/rewards-store';
-import { parseDateKey, toDateKey } from '@/services/dates';
+import { getCurrentSeason, getRamadanDates, IslamicSeason } from '@/services/islamic-calendar';
 
-// Ramadan 2026 / 1447 AH dates (February 18 - March 19, 2026)
-export const RAMADAN_START = '2026-02-18';
-export const RAMADAN_DAYS = 30;
-
-export const getRamadanDates = (): string[] => {
-  const dates: string[] = [];
-  const startDate = parseDateKey(RAMADAN_START);
-
-  for (let i = 0; i < RAMADAN_DAYS; i++) {
-    const date = new Date(startDate);
-    date.setDate(startDate.getDate() + i);
-    dates.push(toDateKey(date));
-  }
-
-  return dates;
-};
-
-export const useFasting = (childId: string) => {
+// Stats and dates cover one Ramadan, so last year's days never count towards this year's reward.
+export const useFasting = (childId: string, season: IslamicSeason = getCurrentSeason()) => {
   const { logs, isLoading, error, setLogs, upsertLog, setLoading, setError } = useFastingStore();
   const { rewards } = useRewardsStore();
 
   const childLogs = logs[childId] || [];
+  const ramadanDates = getRamadanDates(season);
 
   const fetchFastingLogs = useCallback(async ({ silent = false }: FetchOptions = {}) => {
     if (!childId) return;
@@ -96,10 +81,14 @@ export const useFasting = (childId: string) => {
     return log ? log.status : null;
   }, [childLogs]);
 
+  const firstDate = ramadanDates[0];
+  const lastDate = ramadanDates[ramadanDates.length - 1];
+
   const calculateStats = useCallback((): ChildStats => {
-    const fullDays = childLogs.filter((l) => l.status === 'full').length;
-    const halfDays = childLogs.filter((l) => l.status === 'half').length;
-    const noneDays = childLogs.filter((l) => l.status === 'none').length;
+    const seasonLogs = childLogs.filter((l) => l.date >= firstDate && l.date <= lastDate);
+    const fullDays = seasonLogs.filter((l) => l.status === 'full').length;
+    const halfDays = seasonLogs.filter((l) => l.status === 'half').length;
+    const noneDays = seasonLogs.filter((l) => l.status === 'none').length;
 
     const fullAmount = rewards?.full_day_amount ?? 5;
     const halfAmount = rewards?.half_day_amount ?? 2.5;
@@ -112,7 +101,7 @@ export const useFasting = (childId: string) => {
       noneDays,
       totalReward,
     };
-  }, [childLogs, rewards]);
+  }, [childLogs, rewards, firstDate, lastDate]);
 
   return {
     logs: childLogs,
@@ -122,6 +111,6 @@ export const useFasting = (childId: string) => {
     updateFastingStatus,
     getStatusForDate,
     calculateStats,
-    ramadanDates: getRamadanDates(),
+    ramadanDates,
   };
 };

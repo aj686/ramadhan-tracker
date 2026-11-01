@@ -26,7 +26,7 @@ import { countries } from '@/data/countries';
 const MODULE_META: Record<ModuleId, { title: string; emoji: string; color: string; isPremium: boolean }> = {
   animals:     { title: 'Animals',           emoji: '🐾', color: '#22C55E', isPremium: false },
   allah_names: { title: '99 Names of Allah', emoji: '📿', color: '#8B5CF6', isPremium: false },
-  prophets:    { title: 'Prophets & Rasul',  emoji: '👳', color: '#F59E0B', isPremium: false },
+  prophets:    { title: 'Prophets & Rasul',  emoji: '📜', color: '#F59E0B', isPremium: false },
   transport:   { title: 'Transport',         emoji: '🚗', color: '#06B6D4', isPremium: true },
   countries:   { title: 'Countries',         emoji: '🌍', color: '#3B82F6', isPremium: true },
 };

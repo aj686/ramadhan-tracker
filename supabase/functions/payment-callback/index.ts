@@ -1,103 +1,111 @@
 // Supabase Edge Function: payment-callback
-// Receives POST callback from ToyyibPay after user pays.
-// Updates subscription status to 'active' and sets expiry date.
+// Receives the POST from ToyyibPay after a payment, then activates the subscription.
 //
-// ToyyibPay callback POST fields:
-//   refno      — ToyyibPay transaction reference number
-//   status     — "1"=success, "2"=pending, "3"=failed
-//   reason     — description
-//   billcode   — the bill code
-//   order_id   — our external reference (billExternalReferenceNo)
-//   amount     — amount paid in sen
+// This endpoint is public by necessity, so nothing in the request body is trusted:
+//   1. the order must exist and its bill code must match;
+//   2. the payment is re-confirmed with ToyyibPay's getBillTransactions;
+//   3. the paid amount is compared against the plan's price;
+//   4. only a 'pending' row can activate, so a replayed callback changes nothing.
 //
-// This endpoint must be publicly accessible (no auth header from ToyyibPay).
-// Security: we validate order_id exists in our DB (we created it, it's a random ID).
+// Deploy with --no-verify-jwt (see supabase/config.toml): ToyyibPay sends no auth header.
 
 import { serve } from 'https://deno.land/std@0.177.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { calculateExpiry, fetchVerifiedPayment, isPaymentValid, PLANS, type PlanId } from '../_shared/toyyibpay.ts';
+
+// Always 200 for anything final, or ToyyibPay keeps retrying a request that can never succeed.
+const done = () => new Response('ok', { status: 200 });
+
+const readBody = async (req: Request): Promise<Record<string, string> | null> => {
+  const contentType = req.headers.get('content-type') ?? '';
+  try {
+    if (contentType.includes('application/json')) return await req.json();
+    return Object.fromEntries(new URLSearchParams(await req.text()));
+  } catch {
+    return null;
+  }
+};
 
 serve(async (req) => {
-  if (req.method !== 'POST') {
-    return new Response('Method not allowed', { status: 405 });
-  }
+  if (req.method !== 'POST') return new Response('Method not allowed', { status: 405 });
 
-  let refno: string, status: string, billcode: string, orderId: string, amount: string;
+  const body = await readBody(req);
+  if (!body) return new Response('Bad request', { status: 400 });
 
-  const contentType = req.headers.get('content-type') ?? '';
+  const { status, billcode: billCode, order_id: orderId, refno } = body;
+  console.log('ToyyibPay callback:', { refno, status });
 
-  if (contentType.includes('application/x-www-form-urlencoded')) {
-    const text = await req.text();
-    const params = new URLSearchParams(text);
-    refno    = params.get('refno')    ?? '';
-    status   = params.get('status')   ?? '';
-    billcode = params.get('billcode') ?? '';
-    orderId  = params.get('order_id') ?? '';
-    amount   = params.get('amount')   ?? '';
-  } else {
-    // Some ToyyibPay versions send JSON
-    try {
-      const body = await req.json();
-      refno    = body.refno    ?? '';
-      status   = body.status   ?? '';
-      billcode = body.billcode ?? '';
-      orderId  = body.order_id ?? '';
-      amount   = body.amount   ?? '';
-    } catch {
-      return new Response('Bad request', { status: 400 });
-    }
-  }
-
-  console.log('ToyyibPay callback:', { refno, status, billcode, orderId, amount });
+  // Only a success can change anything. A failed or pending payment leaves the row as it is.
+  if (status !== '1' || !billCode || !orderId) return done();
 
   const supabase = createClient(
     Deno.env.get('SUPABASE_URL')!,
     Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
   );
 
-  if (status === '1') {
-    // Payment success — find the pending subscription by order_id
-    const { data: sub, error: fetchError } = await supabase
-      .from('subscriptions')
-      .select('id, plan')
-      .eq('order_id', orderId)
-      .single();
+  const { data: subscription, error: fetchError } = await supabase
+    .from('subscriptions')
+    .select('id, user_id, plan, status, bill_code')
+    .eq('order_id', orderId)
+    .maybeSingle();
 
-    if (fetchError || !sub) {
-      console.error('Subscription not found for order_id:', orderId, fetchError);
-      // Return 200 to ToyyibPay so it doesn't retry endlessly
-      return new Response('ok', { status: 200 });
-    }
-
-    // Calculate expiry based on plan
-    const now = new Date();
-    let expiresAt: Date;
-    if (sub.plan === 'yearly') {
-      expiresAt = new Date(now);
-      expiresAt.setFullYear(expiresAt.getFullYear() + 1);
-    } else {
-      expiresAt = new Date(now);
-      expiresAt.setMonth(expiresAt.getMonth() + 1);
-    }
-
-    const { error: updateError } = await supabase
-      .from('subscriptions')
-      .update({
-        status:     'active',
-        expires_at: expiresAt.toISOString(),
-        updated_at: new Date().toISOString(),
-      })
-      .eq('id', sub.id);
-
-    if (updateError) {
-      console.error('Failed to activate subscription:', updateError);
-    } else {
-      console.log(`Subscription ${sub.id} activated. Expires: ${expiresAt.toISOString()}`);
-    }
-  } else if (status === '3') {
-    // Payment failed — log it (keep status as 'pending' or mark failed if desired)
-    console.log('Payment failed for order_id:', orderId, 'reason:', billcode);
+  if (fetchError) {
+    console.error('Could not read subscription:', fetchError.message);
+    return new Response('Try again', { status: 500 });
   }
 
-  // Always return 200 to ToyyibPay
-  return new Response('ok', { status: 200 });
+  if (!subscription || subscription.bill_code !== billCode) {
+    console.warn('Callback did not match an order:', { refno });
+    return done();
+  }
+
+  if (subscription.status !== 'pending') return done();
+
+  const plan = subscription.plan as PlanId;
+  if (!PLANS[plan]) return done();
+
+  let payment;
+  try {
+    payment = await fetchVerifiedPayment(billCode);
+  } catch (err) {
+    // A gateway outage is temporary, so ask ToyyibPay to retry rather than losing a real payment.
+    console.error('Could not verify payment:', err instanceof Error ? err.message : 'unknown error');
+    return new Response('Try again', { status: 503 });
+  }
+
+  if (!payment || !isPaymentValid(payment, plan, orderId)) {
+    console.warn('Payment failed verification:', { refno, paidSen: payment?.paidSen, plan });
+    return done();
+  }
+
+  const now = new Date();
+  const { data: latestActive } = await supabase
+    .from('subscriptions')
+    .select('expires_at')
+    .eq('user_id', subscription.user_id)
+    .eq('status', 'active')
+    .order('expires_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  const currentExpiry = latestActive?.expires_at ? new Date(latestActive.expires_at) : null;
+  const expiresAt = calculateExpiry(plan, now, currentExpiry);
+
+  // The status check makes this atomic: of two simultaneous callbacks, only one can win.
+  const { error: updateError } = await supabase
+    .from('subscriptions')
+    .update({
+      status: 'active',
+      expires_at: expiresAt.toISOString(),
+      updated_at: now.toISOString(),
+    })
+    .eq('id', subscription.id)
+    .eq('status', 'pending');
+
+  if (updateError) {
+    console.error('Could not activate subscription:', updateError.message);
+    return new Response('Try again', { status: 500 });
+  }
+
+  return done();
 });

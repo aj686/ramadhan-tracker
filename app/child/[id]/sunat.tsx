@@ -12,6 +12,7 @@ import { useRefetchOnForeground } from '@/hooks/use-refetch-on-foreground';
 import { useTheme } from '@/hooks/use-theme';
 import { useChildren } from '@/hooks/use-children';
 import { useSunat, getSunatDates, SUNAT_TYPE_LABELS } from '@/hooks/use-sunat';
+import { useSubscription } from '@/hooks/use-subscription';
 import { PremiumGate } from '@/components/premium-gate';
 import { parseDateKey, toDateKey } from '@/services/dates';
 import { alertNotSaved } from '@/services/save-error';
@@ -20,7 +21,6 @@ import { SunatType } from '@/types';
 
 const MONTH_SHORT = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 const DAY_SHORT   = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
-const CURRENT_YEAR = new Date().getFullYear();
 
 const TYPE_TABS: { value: SunatType; icon: string }[] = [
   { value: 'isnin_khamis', icon: 'calendar' },
@@ -37,22 +37,26 @@ export default function SunatScreen() {
   const { fetchSunatLogs, toggleSunat, isCompleted, calculateStats, isLoading } = useSunat(id);
   const child = children.find((c) => c.id === id);
   const [activeType, setActiveType] = useState<SunatType>('isnin_khamis');
+  const { canAccessSunat } = useSubscription();
 
-  useEffect(() => { fetchSunatLogs(); }, [fetchSunatLogs]);
+  useEffect(() => {
+    if (canAccessSunat) fetchSunatLogs();
+  }, [canAccessSunat, fetchSunatLogs]);
 
   useRefetchOnForeground(() => {
-    fetchSunatLogs({ silent: true });
+    if (canAccessSunat) fetchSunatLogs({ silent: true });
   });
 
   const todayKey = toDateKey(new Date());
+  const currentYear = new Date().getFullYear();
 
   const handleToggle = async (date: string, type: SunatType) => {
     const result = await toggleSunat(date, type);
     if (!result.success) alertNotSaved();
   };
 
-  const allDates = useMemo(() => getSunatDates(CURRENT_YEAR), []);
-  const stats = calculateStats();
+  const allDates = useMemo(() => getSunatDates(currentYear), [currentYear]);
+  const stats = calculateStats(currentYear);
 
   // Group selected dates by month
   const groupedDates = useMemo(() => {
@@ -65,11 +69,11 @@ export default function SunatScreen() {
       if (last?.monthKey === key) {
         last.dates.push(date);
       } else {
-        groups.push({ monthKey: key, monthLabel: `${MONTH_SHORT[month]} ${CURRENT_YEAR}`, dates: [date] });
+        groups.push({ monthKey: key, monthLabel: `${MONTH_SHORT[month]} ${currentYear}`, dates: [date] });
       }
     });
     return groups;
-  }, [allDates, activeType]);
+  }, [allDates, activeType, currentYear]);
 
   const targetForType: Record<SunatType, number> = {
     isnin_khamis: allDates.isnin_khamis.length,
@@ -92,7 +96,7 @@ export default function SunatScreen() {
         <View style={styles.headerCenter}>
           <Text style={[styles.headerTitle, { color: colors.text }]}>Puasa Sunat</Text>
           <Text style={[styles.headerSub, { color: colors.textSecondary }]}>
-            {child?.name ?? ''} — {CURRENT_YEAR}
+            {child?.name ?? ''} — {currentYear}
           </Text>
         </View>
         <View style={{ width: 40 }} />
@@ -165,6 +169,12 @@ export default function SunatScreen() {
                 );
               })}
             </View>
+
+            {activeType !== 'isnin_khamis' && (
+              <Text style={[styles.emptyNote, { color: colors.textMuted }]}>
+                Expected dates. Follow JAKIM&apos;s announcement if it differs.
+              </Text>
+            )}
 
             {/* Arafah — single day */}
             {activeType === 'arafah' && (

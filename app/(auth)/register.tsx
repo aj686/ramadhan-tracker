@@ -3,6 +3,7 @@ import { useAuth } from '@/hooks/use-auth';
 import { useGoBack } from '@/hooks/use-go-back';
 import { useTheme } from '@/hooks/use-theme';
 import { Alert } from '@/services/alert';
+import { useAuthStore } from '@/store/auth-store';
 import { Ionicons } from '@expo/vector-icons';
 import { BlurView } from 'expo-blur';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -53,7 +54,8 @@ export default function RegisterScreen() {
     if (!result.success) {
       Alert.alert('Registration Failed', result.error || 'Please try again');
     } else if (result.needsVerification) {
-      router.push({ pathname: '/(auth)/verify', params: { email: email.trim() } });
+      useAuthStore.getState().setPendingEmail(email.trim());
+      router.push('/(auth)/verify');
     }
   };
 
@@ -83,7 +85,7 @@ export default function RegisterScreen() {
             />
             <Text style={[styles.title, { color: colors.text }]}>Create Account</Text>
             <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
-              Start your children's Ramadan journey
+              Start your children&apos;s Ramadan journey
             </Text>
           </View>
 

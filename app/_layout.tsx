@@ -4,6 +4,7 @@ import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { useAuth } from '@/hooks/use-auth';
 import { useChildren } from '@/hooks/use-children';
+import { usePrayerReminderSync } from '@/hooks/use-prayer-reminders';
 import { useTheme } from '@/hooks/use-theme';
 import { useSubscriptionStore } from '@/store/subscription-store';
 import { useThemeStore } from '@/store/theme-store';
@@ -11,8 +12,9 @@ import { useThemeStore } from '@/store/theme-store';
 function RootLayoutNav() {
   const { isAuthenticated, isLoading, user } = useAuth();
   const { fetchChildren } = useChildren();
-  const { colors, isDark } = useTheme();
+  const { colors } = useTheme();
   const { loadPreference } = useThemeStore();
+  usePrayerReminderSync();
 
   // Load persisted theme preference on startup
   useEffect(() => {
@@ -35,8 +37,9 @@ function RootLayoutNav() {
     if (isLoading) return;
 
     const inAuthGroup = segments[0] === '(auth)';
+    const isPublicPage = segments[0] === 'privacy' || segments[0] === 'delete-account';
 
-    if (!isAuthenticated && !inAuthGroup) {
+    if (!isAuthenticated && !inAuthGroup && !isPublicPage) {
       router.replace('/(auth)/login');
     } else if (isAuthenticated && inAuthGroup) {
       router.replace('/(tabs)');
@@ -86,6 +89,10 @@ function RootLayoutNav() {
         name="premium/upgrade"
         options={{ animation: 'slide_from_bottom', presentation: 'modal' }}
       />
+      <Stack.Screen name="games" options={{ animation: 'slide_from_right' }} />
+      <Stack.Screen name="settings/reminders" options={{ animation: 'slide_from_right' }} />
+      <Stack.Screen name="privacy" options={{ animation: 'slide_from_right' }} />
+      <Stack.Screen name="delete-account" options={{ animation: 'slide_from_right' }} />
     </Stack>
   );
 }

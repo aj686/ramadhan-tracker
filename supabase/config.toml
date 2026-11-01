@@ -1,0 +1,9 @@
+# ToyyibPay calls these two with no auth header, so the gateway must not demand a JWT.
+# Every other function keeps the default check. payment-callback verifies each payment itself.
+project_id = "mylittlemuslim"
+
+[functions.payment-callback]
+verify_jwt = false
+
+[functions.payment-return]
+verify_jwt = false

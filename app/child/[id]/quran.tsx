@@ -12,6 +12,7 @@ import { useRefetchOnForeground } from '@/hooks/use-refetch-on-foreground';
 import { useTheme } from '@/hooks/use-theme';
 import { useChildren } from '@/hooks/use-children';
 import { useQuran, QURAN_TOTAL_PAGES } from '@/hooks/use-quran';
+import { useSubscription } from '@/hooks/use-subscription';
 import { PremiumGate } from '@/components/premium-gate';
 import { alertNotSaved } from '@/services/save-error';
 import { borderRadius, spacing, typography } from '@/constants/theme';
@@ -19,7 +20,6 @@ import { borderRadius, spacing, typography } from '@/constants/theme';
 const MONTH_NAMES = ['January','February','March','April','May','June','July','August','September','October','November','December'];
 const MONTH_SHORT = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 const DAY_SHORT   = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
-const CURRENT_YEAR = new Date().getFullYear();
 
 function buildMonthDays(year: number, month: number, todayKey: string) {
   const todayMs = new Date(todayKey).getTime();
@@ -50,11 +50,15 @@ export default function QuranScreen() {
   const [selectedMonth, setSelectedMonth] = useState(() => new Date().getMonth());
   const TODAY = new Date();
   const todayKey = TODAY.toDateString();
+  const currentYear = TODAY.getFullYear();
+  const { canAccessQuran } = useSubscription();
 
-  useEffect(() => { fetchQuranLogs(); }, [fetchQuranLogs]);
+  useEffect(() => {
+    if (canAccessQuran) fetchQuranLogs();
+  }, [canAccessQuran, fetchQuranLogs]);
 
   useRefetchOnForeground(() => {
-    fetchQuranLogs({ silent: true });
+    if (canAccessQuran) fetchQuranLogs({ silent: true });
   });
 
   const handleUpdatePages = async (date: string, pages: number) => {
@@ -62,17 +66,17 @@ export default function QuranScreen() {
     if (!result.success) alertNotSaved();
   };
 
-  const stats = calculateStats();
-  const selectedDays = useMemo(() => buildMonthDays(CURRENT_YEAR, selectedMonth, todayKey), [selectedMonth, todayKey]);
+  const stats = calculateStats(currentYear);
+  const selectedDays = useMemo(() => buildMonthDays(currentYear, selectedMonth, todayKey), [currentYear, selectedMonth, todayKey]);
 
   // Per-month page totals for grid
   const monthPages = useMemo(
     () => Array.from({ length: 12 }, (_, m) => {
       const mm = String(m + 1).padStart(2, '0');
-      return getMonthPages(`${CURRENT_YEAR}-${mm}`);
+      return getMonthPages(`${currentYear}-${mm}`);
     }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [getMonthPages, stats.totalPages],
+    [getMonthPages, stats.totalPages, currentYear],
   );
 
   const selectedMonthTotal = monthPages[selectedMonth];
@@ -92,7 +96,7 @@ export default function QuranScreen() {
         <View style={styles.headerCenter}>
           <Text style={[styles.headerTitle, { color: colors.text }]}>Quran Reading</Text>
           <Text style={[styles.headerSub, { color: colors.textSecondary }]}>
-            {child?.name ?? ''} — {CURRENT_YEAR}
+            {child?.name ?? ''} — {currentYear}
           </Text>
         </View>
         <View style={{ width: 40 }} />

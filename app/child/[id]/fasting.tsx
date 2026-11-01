@@ -1,4 +1,4 @@
-import React, { useEffect, useCallback } from 'react';
+import React, { useEffect, useCallback, useMemo, useState } from 'react';
 import {
   View, Text, TouchableOpacity, StyleSheet, ScrollView, ActivityIndicator,
 } from 'react-native';
@@ -14,6 +14,7 @@ import { useChildren } from '@/hooks/use-children';
 import { useFasting } from '@/hooks/use-fasting';
 import { useRewards } from '@/hooks/use-rewards';
 import { parseDateKey } from '@/services/dates';
+import { getCurrentSeason, getSeasonYear, getSelectableSeasons } from '@/services/islamic-calendar';
 import { alertNotSaved } from '@/services/save-error';
 import { borderRadius, spacing, typography } from '@/constants/theme';
 import { FastingStatus } from '@/types';
@@ -30,7 +31,11 @@ export default function FastingScreen() {
   const insets = useSafeAreaInsets();
   const goBack = useGoBack(`/child/${id}`);
   const { children } = useChildren();
-  const { logs, isLoading, fetchFastingLogs, updateFastingStatus, getStatusForDate, calculateStats, ramadanDates } = useFasting(id);
+  const seasons = useMemo(() => getSelectableSeasons(), []);
+  const [hijriYear, setHijriYear] = useState(() => getCurrentSeason().hijriYear);
+  const seasonIndex = Math.max(0, seasons.findIndex((s) => s.hijriYear === hijriYear));
+  const season = seasons[seasonIndex];
+  const { logs, isLoading, fetchFastingLogs, updateFastingStatus, getStatusForDate, calculateStats, ramadanDates } = useFasting(id, season);
   const { rewards, fetchRewards } = useRewards();
 
   const child = children.find((c) => c.id === id);
@@ -78,11 +83,44 @@ export default function FastingScreen() {
         <View style={styles.headerCenter}>
           <Text style={[styles.headerTitle, { color: colors.text }]}>Puasa Ramadhan</Text>
           <Text style={[styles.headerSub, { color: colors.textSecondary }]}>
-            {child?.name} — 2026
+            {child?.name} — {getSeasonYear(season)}
           </Text>
         </View>
         <View style={{ width: 40 }} />
       </View>
+
+      {/* Season switcher: past Ramadans stay viewable and editable */}
+      {seasons.length > 1 && (
+        <View style={styles.seasonRow}>
+          <TouchableOpacity
+            onPress={() => setHijriYear(seasons[seasonIndex - 1].hijriYear)}
+            disabled={seasonIndex === 0}
+            style={[styles.seasonBtn, seasonIndex === 0 && styles.seasonBtnDisabled]}
+            accessibilityRole="button"
+            accessibilityLabel="Previous Ramadan"
+          >
+            <Ionicons name="chevron-back" size={18} color={colors.fastingColor} />
+          </TouchableOpacity>
+          <Text style={[styles.seasonLabel, { color: colors.text }]}>
+            {getSeasonYear(season)} · {season.hijriYear}H
+          </Text>
+          <TouchableOpacity
+            onPress={() => setHijriYear(seasons[seasonIndex + 1].hijriYear)}
+            disabled={seasonIndex === seasons.length - 1}
+            style={[styles.seasonBtn, seasonIndex === seasons.length - 1 && styles.seasonBtnDisabled]}
+            accessibilityRole="button"
+            accessibilityLabel="Next Ramadan"
+          >
+            <Ionicons name="chevron-forward" size={18} color={colors.fastingColor} />
+          </TouchableOpacity>
+        </View>
+      )}
+
+      {!season.confirmed && (
+        <Text style={[styles.seasonNote, { color: colors.textMuted }]}>
+          Expected dates. Follow JAKIM&apos;s announcement if the first day differs.
+        </Text>
+      )}
 
       <ScrollView
         contentContainerStyle={[
@@ -210,6 +248,17 @@ const styles = StyleSheet.create({
   headerCenter: { flex: 1, alignItems: 'center' },
   headerTitle: { ...typography.title3 },
   headerSub: { ...typography.caption, marginTop: 2 },
+  seasonRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.md,
+    paddingBottom: spacing.xs,
+  },
+  seasonBtn: { width: 40, height: 40, justifyContent: 'center', alignItems: 'center' },
+  seasonBtnDisabled: { opacity: 0.3 },
+  seasonLabel: { ...typography.subhead, fontWeight: '600' },
+  seasonNote: { ...typography.caption, textAlign: 'center', paddingHorizontal: spacing.xl },
   content: { paddingHorizontal: spacing.xl, paddingTop: spacing.md },
   statsRow: { flexDirection: 'row', gap: spacing.md, marginBottom: spacing.md },
   statCard: {

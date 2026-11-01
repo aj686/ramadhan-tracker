@@ -12,6 +12,7 @@ import { useRefetchOnForeground } from '@/hooks/use-refetch-on-foreground';
 import { useTheme } from '@/hooks/use-theme';
 import { useChildren } from '@/hooks/use-children';
 import { useDoa, DOA_ITEMS } from '@/hooks/use-doa';
+import { useSubscription } from '@/hooks/use-subscription';
 import { PremiumGate } from '@/components/premium-gate';
 import { alertNotSaved } from '@/services/save-error';
 import { borderRadius, spacing, typography } from '@/constants/theme';
@@ -20,7 +21,6 @@ import { DoaKey } from '@/types';
 const MONTH_NAMES = ['January','February','March','April','May','June','July','August','September','October','November','December'];
 const MONTH_SHORT = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 const DAY_SHORT   = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
-const CURRENT_YEAR = new Date().getFullYear();
 const DOA_TOTAL = DOA_ITEMS.length; // 6
 
 function buildMonthDays(year: number, month: number, todayKey: string) {
@@ -52,11 +52,15 @@ export default function DoaScreen() {
   const [selectedMonth, setSelectedMonth] = useState(() => new Date().getMonth());
   const TODAY = new Date();
   const todayKey = TODAY.toDateString();
+  const currentYear = TODAY.getFullYear();
+  const { canAccessDoa } = useSubscription();
 
-  useEffect(() => { fetchDoaLogs(); }, [fetchDoaLogs]);
+  useEffect(() => {
+    if (canAccessDoa) fetchDoaLogs();
+  }, [canAccessDoa, fetchDoaLogs]);
 
   useRefetchOnForeground(() => {
-    fetchDoaLogs({ silent: true });
+    if (canAccessDoa) fetchDoaLogs({ silent: true });
   });
 
   const handleToggle = async (date: string, key: DoaKey, value: boolean) => {
@@ -64,11 +68,11 @@ export default function DoaScreen() {
     if (!result.success) alertNotSaved();
   };
 
-  const stats = calculateStats();
-  const selectedDays = useMemo(() => buildMonthDays(CURRENT_YEAR, selectedMonth, todayKey), [selectedMonth, todayKey]);
+  const stats = calculateStats(currentYear);
+  const selectedDays = useMemo(() => buildMonthDays(currentYear, selectedMonth, todayKey), [currentYear, selectedMonth, todayKey]);
 
   const yearTotal = stats.total;
-  const yearStart = new Date(CURRENT_YEAR, 0, 1);
+  const yearStart = new Date(currentYear, 0, 1);
   const daysElapsed = Math.max(1, Math.floor((TODAY.getTime() - yearStart.getTime()) / 86400000) + 1);
   const possibleSoFar = daysElapsed * DOA_TOTAL;
   const yearPct = Math.min(100, Math.round((yearTotal / possibleSoFar) * 100));
@@ -96,7 +100,7 @@ export default function DoaScreen() {
         <View style={styles.headerCenter}>
           <Text style={[styles.headerTitle, { color: colors.text }]}>Doa Harian</Text>
           <Text style={[styles.headerSub, { color: colors.textSecondary }]}>
-            {child?.name ?? ''} — {CURRENT_YEAR}
+            {child?.name ?? ''} — {currentYear}
           </Text>
         </View>
         <View style={{ width: 40 }} />
@@ -121,7 +125,7 @@ export default function DoaScreen() {
                   </View>
                   <View style={styles.summaryText}>
                     <Text style={[styles.summaryTitle, { color: colors.text }]}>
-                      {CURRENT_YEAR} Doas
+                      {currentYear} Doas
                     </Text>
                     <Text style={[styles.summaryCount, { color: colors.textSecondary }]}>
                       {yearTotal} / {possibleSoFar} doas
@@ -143,7 +147,7 @@ export default function DoaScreen() {
                 const isCurrentMonth = month === TODAY.getMonth();
                 const isFutureMonth = month > TODAY.getMonth();
                 // Quick month count from days
-                const mDays = buildMonthDays(CURRENT_YEAR, month, todayKey);
+                const mDays = buildMonthDays(currentYear, month, todayKey);
                 const mDone = mDays.reduce((s, d) => s + getDoaCountForDate(d.date), 0);
                 const mPossible = mDays.filter((d) => !d.isFuture).length * DOA_TOTAL;
                 const mPct = mPossible > 0 ? Math.round((mDone / mPossible) * 100) : 0;
