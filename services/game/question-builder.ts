@@ -4,6 +4,7 @@ import type {
   Activity,
   ChoiceQuestion,
   ContentSpec,
+  FeedQuestion,
   GameItem,
   Lang,
   LocalText,
@@ -276,6 +277,37 @@ const buildFill = (activity: Activity, spec: Extract<ContentSpec, { type: 'fill'
   });
 };
 
+const buildFeed = (
+  activity: Activity,
+  spec: Extract<ContentSpec, { type: 'feed' }>,
+  rng: Rng,
+): FeedQuestion[] => {
+  const character = POOLS.animals.find((item) => item.id === spec.characterId);
+  if (!character) throw new Error(`Unknown character ${spec.characterId}`);
+
+  const pool = poolFor(spec.pools);
+  const items = pool.map((entry) => entry.item);
+  const { ms: name, en: nameEn } = character.label;
+
+  return takeRounds(pool, spec.rounds, rng).map(({ item, pool: poolId }, round) => {
+    const prefix = FIND_PREFIX[poolId];
+    const wants = text(
+      `${name.charAt(0).toUpperCase()}${name.slice(1)} mahu ${prefix.ms}${item.label.ms}`,
+      `The ${nameEn} wants ${prefix.en}${item.label.en}`,
+    );
+    const optionCount = spec.optionCounts[Math.min(round, spec.optionCounts.length - 1)];
+    return {
+      kind: 'feed',
+      id: `${activity.id}-${round}`,
+      prompt: wants,
+      say: wants,
+      character,
+      options: optionsFor(item, items, optionCount, rng),
+      answerId: item.id,
+    };
+  });
+};
+
 export const buildQuestions = (activity: Activity, lang: Lang, seed: number): Question[] => {
   const rng = createRng(seed);
   const spec = activity.spec;
@@ -303,6 +335,8 @@ export const buildQuestions = (activity: Activity, lang: Lang, seed: number): Qu
       return buildDots(activity, spec);
     case 'fill':
       return buildFill(activity, spec, rng);
+    case 'feed':
+      return buildFeed(activity, spec, rng);
   }
 };
 

@@ -65,14 +65,14 @@ store/           {auth,children,fasting,prayer,rewards,subscription,theme,
                   sunat,quran,doa,game-progress,game-settings,reminder}-store
 components/      glass-card · category-chip · progress-bar · tracker-card · premium-gate ·
                  learning-card · letter-highlight · ad-banner(.web)
-components/game/ engine UI: game-renderer (mechanic → game) · 8 games · shell parts
+components/game/ engine UI: game-renderer (mechanic → game) · 9 games · character-sprite · shell parts
 data/            animals(30) allah-names(99) prophets(25) transport(25) countries(30)
-data/games/      schema · activities (the 26 games) · items · letter-strokes · figures
+data/games/      schema · activities (the 27 games) · items · letter-strokes · figures
 i18n/            games.ts (all game interface text, BM and English)
 services/        supabase · toyyibpay · alert(.web) · save-error · dates · islamic-calendar ·
                  prayer-times · notifications(.web) · report · report-output(.web)
 services/game/   session (rules) · question-builder · progress · progress-storage ·
-                 audio-manager · media (register art and audio here) · geometry · random
+                 audio-manager · media (register art and audio here) · geometry · sprite · random
 supabase/        migrations/00{1..5}_*.sql · config.toml · functions/{create-payment,
                  payment-callback,payment-return,delete-account,_shared}
 constants/       theme.ts · legal.ts · ads.ts
@@ -175,6 +175,8 @@ skips `setLoading`. Never add it to Rewards: a refetch overwrites a half-typed f
 - Drag and drawing use `PanResponder` and rotated Views, on purpose: no Reanimated, gesture handler
   or SVG, so nothing new is exposed to the web CSP and no native module is needed. Don't add them
   without a reason.
+- Animated characters are pre-rendered sprite sheets, registered in `SPRITES` in `services/game/media.ts`,
+  with no 3D at runtime. Without a sheet, the character is its emoji, animated in code.
 - Art and audio are registered by key in `services/game/media.ts`. An item with no file falls back
   to its emoji and to text-to-speech. Never assume a voice exists: `audioManager.canSpeak` can be
   false, and every game must stay playable with no sound.
@@ -224,16 +226,27 @@ Tests cover logic only, not screens. "Verified" means it typechecks, lints, test
 the screen — say plainly which of those you actually did. A new route needs `.expo/types` regenerated
 (run `npx expo start` once) or `tsc` reports it as an unknown path.
 
-**Releases.** Every push to `master` publishes OTA to production Android (`eas-update.yml`,
+**Releases.** Every push to `master` publishes OTA to the `production` branch (`eas-update.yml`,
 which skips pushes that change only web-only files or `**.md`). A push that touches `package.json`,
 `package-lock.json`, `app.json` or `eas.json` skips the publish and needs `eas build` instead.
 `runtimeVersion` follows the app `version`, so bump the version in the same commit that adds a
-native module: JS that needs it must never reach a binary without it. Once Cloudflare Workers Builds
-is connected to this repo, **every push to `master` also deploys the web app.** Build command
-`npm run web:build`, deploy command `npx wrangler deploy`, `NODE_VERSION=22`. The Worker name in
-`wrangler.jsonc` must stay `mylittlemuslim`, because a mismatch with the Cloudflare project name
-fails the build. Old Android code saves whole rows and can erase ticks made on web, so shared
-fixes must reach Android before web goes live.
+native module: JS that needs it must never reach a binary without it.
+
+Every push to `master` also does two more things:
+- `.eas/workflows/build.yml` starts an Android `development` build, which uses build quota, even for a
+  docs-only push. The `development` channel has no update branch, so a phone on that build gets no OTA.
+  For a test phone that should get updates, use the `internal` profile: an APK on the `production` channel.
+- Cloudflare Workers Builds is connected, so **the push also builds the web app.** Build command
+  `npm run web:build`, deploy command `npx wrangler deploy`, `NODE_VERSION=22`. Cloudflare calls the
+  Worker `ramadhan-tracker` while `wrangler.jsonc` says `mylittlemuslim`, and the first build still
+  reported success, so a name mismatch does not always fail the build.
+
+Old Android code saves whole rows and can erase ticks made on web, so shared fixes must reach Android
+before anyone is pointed at the web app.
+
+A native module is only proven by a real `eas build`: npm's version ranges do not show that it compiles.
+`react-native-google-mobile-ads` is pinned at 16.3.4, because 17.0.0 does not compile on React Native 0.81
+and 16.4.0 onward use an Ads SDK built with Kotlin 2.3, which this project's Kotlin 2.1 cannot read.
 
 ---
 
@@ -349,27 +362,31 @@ and secrets are deployed and a sandbox payment has worked end to end (Plans.md �
 
 ## 6. Current status — 2026-11-01
 
-Stages 1–3 of [Plans.md](Plans.md) §13 are code-complete. **None of it is deployed, and none of it
-has run on a phone yet.** It has been tested on web only. Every owner step is listed in §13.7.
+Stages 1–3 of [Plans.md](Plans.md) §13 are code-complete and pushed to `master`. Cloudflare built the web
+app from that push, ahead of Android. **Phones get none of it until they install a 1.2.0 build**, because
+that push skipped OTA by design. The `internal` APK reaches the login screen on an Android 16 emulator.
+Nothing past login has run natively, and nothing has run on a physical phone. Games and screens are
+tested on web only. Every owner step is listed in §13.7.
 
-### Code-complete, not yet released
+### Code-complete, not yet on phones
 Register/login with password reset · account deletion · privacy policy (BM and English, draft) ·
 up to 2 children free / unlimited premium · Puasa Ramadhan tracker for any year · Solat year view ·
-reward system · learning modules · family leaderboard · theme toggle · premium gates · 26 kids games
+reward system · learning modules · family leaderboard · theme toggle · premium gates · 27 kids games
 in BM and English · prayer reminders (Android and iOS) · PDF report · AdMob banner (off until unit ids
 are set) · hardened payment functions (client closed by `PAYMENT_OPEN`).
 
 ### Blocked on the owner, not on code
 | Item | Blocker |
 |---|---|
-| Android | Device test, then `eas build`. Phones still run old code. |
+| Android | Test a 1.2.0 build on a real phone, then `eas build --profile production`. Older phones still run old code. |
 | Sunat / Quran / Doa trackers | Run `supabase/migrations/005_phase2_logs.sql`. |
 | Account deletion | Deploy the `delete-account` function. |
 | Password reset, email verification | Supabase email templates need `{{ .Token }}`, plus custom SMTP. |
 | ToyyibPay payment | Deploy functions, set secrets, sandbox test, then set `PAYMENT_OPEN`. |
-| Web (PWA) | Connect Cloudflare Workers Builds, after Android (§4). |
+| Web (PWA) | Cloudflare is connected. Test the live address, and don't share it until Android is out (§4). |
 | AdMob | Real app ids in `app.json`, unit ids in `constants/ads.ts`. |
 | Kids games art and audio | About 105 illustrations, 350 voice clips, 15 animal sounds. Emoji and text-to-speech stand in. |
+| Feed the Cat artwork | Optional. A sprite sheet, then one line in `SPRITES`. Its emoji is animated until then. |
 
 ### Not built
 BM/English outside the games (Stage 4) · the UI redesign from the reference image (Stage 4).

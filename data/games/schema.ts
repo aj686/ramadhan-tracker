@@ -14,7 +14,7 @@ export type PoolId =
   | 'letters' | 'numbers' | 'colours' | 'shapes' | 'animals'
   | 'fruits' | 'occupations' | 'body' | 'vehicles' | 'clothing';
 
-export type Mechanic = 'choice' | 'match' | 'sort' | 'arrange' | 'puzzle' | 'trace' | 'dots' | 'fill';
+export type Mechanic = 'choice' | 'match' | 'sort' | 'arrange' | 'puzzle' | 'trace' | 'dots' | 'fill' | 'feed';
 
 // `image` and `audio` are keys into services/game/media.ts. Until a file is registered there,
 // the item falls back to its emoji or text, and to text-to-speech.
@@ -110,6 +110,13 @@ export interface FillQuestion extends QuestionBase {
   palette: GameItem[];
 }
 
+export interface FeedQuestion extends QuestionBase {
+  kind: 'feed';
+  character: GameItem;
+  options: GameItem[];
+  answerId: string;
+}
+
 export type Question =
   | ChoiceQuestion
   | MatchQuestion
@@ -118,7 +125,8 @@ export type Question =
   | PuzzleQuestion
   | TraceQuestion
   | DotsQuestion
-  | FillQuestion;
+  | FillQuestion
+  | FeedQuestion;
 
 // How questions are generated for an activity. Builders live in services/game/question-builder.ts.
 export type ContentSpec =
@@ -138,7 +146,8 @@ export type ContentSpec =
   | { type: 'puzzle'; grids: { cols: number; rows: number }[] }
   | { type: 'trace'; rounds: number }
   | { type: 'dots'; figures: string[] }
-  | { type: 'fill'; rounds: number; paletteSize: number };
+  | { type: 'fill'; rounds: number; paletteSize: number }
+  | { type: 'feed'; characterId: string; pools: PoolId[]; rounds: number; optionCounts: number[] };
 
 export interface Activity {
   id: string;

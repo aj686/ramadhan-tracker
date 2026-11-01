@@ -101,6 +101,14 @@ export const ACTIVITIES: Activity[] = [
     emoji: '🔷', tint: 'purple', mechanic: 'match',
     spec: { type: 'match', set: 'shape_silhouette', rounds: 3, pairCount: 3 },
   },
+  {
+    id: 't-feed',
+    title: { ms: 'Bagi Kucing Makan', en: 'Feed the Cat' },
+    instructions: { ms: 'Seret buah yang betul ke mulut kucing.', en: "Drag the right fruit to the cat's mouth." },
+    age: 'toddler', journey: 'activities', category: 'fruits', difficulty: 1,
+    emoji: '🐱', tint: 'green', mechanic: 'feed',
+    spec: { type: 'feed', characterId: 'animal-cat', pools: ['fruits'], rounds: 5, optionCounts: [2, 2, 3, 3, 3] },
+  },
 
   // ── Ages 4–6: Kembara Play & Explore ─────────────────────────────────────
   {

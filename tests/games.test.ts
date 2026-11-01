@@ -8,6 +8,7 @@ import { advanceCheckpoint, samplePolyline, segmentStyle } from '../services/gam
 import { applySessionResult, pickNextActivity, summarizeProgress } from '../services/game/progress';
 import { buildQuestions, roundCount } from '../services/game/question-builder';
 import { createSession, sessionReducer, type SessionState, starsFor } from '../services/game/session';
+import { CHARACTER_SHEET, clipFinished, frameAt, framePosition, nextClip } from '../services/game/sprite';
 
 const LANGS: Lang[] = ['ms', 'en'];
 const SEEDS = [1, 7, 42, 12345, 987654];
@@ -15,16 +16,53 @@ const SEEDS = [1, 7, 42, 12345, 987654];
 const play = (state: SessionState, ...actions: Parameters<typeof sessionReducer>[1][]) =>
   actions.reduce(sessionReducer, state);
 
+describe('sprite sheet', () => {
+  const { clips, fps, columns, rows } = CHARACTER_SHEET;
+
+  it('uses every frame in the grid exactly once', () => {
+    const used = Object.values(clips).flatMap((clip) =>
+      Array.from({ length: clip.frames }, (_, i) => clip.start + i),
+    );
+    assert.deepEqual([...used].sort((a, b) => a - b), Array.from({ length: columns * rows }, (_, i) => i));
+  });
+
+  it('wraps a looping clip and never finishes it', () => {
+    const frameTime = 1000 / fps;
+    assert.equal(frameAt(0, clips.idle, fps), clips.idle.start);
+    assert.equal(frameAt(frameTime * clips.idle.frames, clips.idle, fps), clips.idle.start);
+    assert.equal(clipFinished(1_000_000, clips.idle, fps), false);
+  });
+
+  it('holds a one-shot clip on its last frame, then finishes it', () => {
+    const last = clips.no.start + clips.no.frames - 1;
+    assert.equal(frameAt(1_000_000, clips.no, fps), last);
+    assert.equal(clipFinished(0, clips.no, fps), false);
+    assert.equal(clipFinished((clips.no.frames / fps) * 1000, clips.no, fps), true);
+  });
+
+  it('finds a frame in the grid', () => {
+    assert.deepEqual(framePosition(0, CHARACTER_SHEET), { column: 0, row: 0 });
+    assert.deepEqual(framePosition(7, CHARACTER_SHEET), { column: 1, row: 1 });
+    assert.deepEqual(framePosition(29, CHARACTER_SHEET), { column: 5, row: 4 });
+  });
+
+  it('goes from eating to joy, and settles back to idle', () => {
+    assert.equal(nextClip('eat'), 'happy');
+    assert.equal(nextClip('happy'), 'idle');
+    assert.equal(nextClip('no'), 'idle');
+  });
+});
+
 describe('activity catalogue', () => {
-  it('has all 26 activities from the brief, with unique ids', () => {
-    assert.equal(ACTIVITIES.length, 26);
-    assert.equal(new Set(ACTIVITIES.map((a) => a.id)).size, 26);
+  it('has the 26 activities from the brief plus Feed the Cat, with unique ids', () => {
+    assert.equal(ACTIVITIES.length, 27);
+    assert.equal(new Set(ACTIVITIES.map((a) => a.id)).size, 27);
   });
 
   it('splits them across the four journeys as the brief lists', () => {
     const count = (journey: string) => ACTIVITIES.filter((a) => a.journey === journey).length;
     assert.equal(count('fundamentals'), 7);
-    assert.equal(count('activities'), 5);
+    assert.equal(count('activities'), 6);
     assert.equal(count('kembara'), 6);
     assert.equal(count('little_step'), 8);
   });
@@ -103,6 +141,16 @@ describe('question builder', () => {
                 assert.ok(LETTER_STROKES[question.letter]);
                 assert.ok(question.palette.length >= 2);
                 break;
+              case 'feed': {
+                const ids = question.options.map((option) => option.id);
+                const answer = question.options.find((option) => option.id === question.answerId);
+                assert.ok(answer, 'the answer is an option');
+                assert.equal(new Set(ids).size, ids.length, 'options are unique');
+                assert.ok(ids.length >= 2, 'at least two options');
+                assert.ok(question.prompt[lang].includes(answer.label[lang]), 'the prompt names the fruit');
+                assert.ok(question.character.emoji, 'the character can show without artwork');
+                break;
+              }
             }
           });
         }

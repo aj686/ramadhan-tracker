@@ -4,6 +4,7 @@ import type { GameReport } from '@/hooks/use-game-session';
 import { ArrangeGame } from './arrange-game';
 import { ChoiceGame } from './choice-game';
 import { DotsGame } from './dots-game';
+import { FeedGame } from './feed-game';
 import { FillGame } from './fill-game';
 import { MatchingGame } from './matching-game';
 import { PuzzleGame } from './puzzle-game';
@@ -42,5 +43,7 @@ export const GameRenderer: React.FC<GameRendererProps> = ({ question, language, 
       return <DotsGame key={key} question={question} {...props} />;
     case 'fill':
       return <FillGame key={key} question={question} {...props} />;
+    case 'feed':
+      return <FeedGame key={key} question={question} {...props} />;
   }
 };
