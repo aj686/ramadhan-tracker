@@ -65,14 +65,14 @@ store/           {auth,children,fasting,prayer,rewards,subscription,theme,
                   sunat,quran,doa,game-progress,game-settings,reminder}-store
 components/      glass-card · category-chip · progress-bar · tracker-card · premium-gate ·
                  learning-card · letter-highlight · ad-banner(.web)
-components/game/ engine UI: game-renderer (mechanic → game) · 9 games · character-sprite · shell parts
+components/game/ engine UI: game-renderer (mechanic → game) · 9 games · character-view · character-3d · cat-model · shell parts
 data/            animals(30) allah-names(99) prophets(25) transport(25) countries(30)
 data/games/      schema · activities (the 27 games) · items · letter-strokes · figures
 i18n/            games.ts (all game interface text, BM and English)
 services/        supabase · toyyibpay · alert(.web) · save-error · dates · islamic-calendar ·
                  prayer-times · notifications(.web) · report · report-output(.web)
 services/game/   session (rules) · question-builder · progress · progress-storage ·
-                 audio-manager · media (register art and audio here) · geometry · sprite · random
+                 audio-manager · media (register art and audio here) · geometry · character-motion · random
 supabase/        migrations/00{1..5}_*.sql · config.toml · functions/{create-payment,
                  payment-callback,payment-return,delete-account,_shared}
 constants/       theme.ts · legal.ts · ads.ts
@@ -175,8 +175,13 @@ skips `setLoading`. Never add it to Rewards: a refetch overwrites a half-typed f
 - Drag and drawing use `PanResponder` and rotated Views, on purpose: no Reanimated, gesture handler
   or SVG, so nothing new is exposed to the web CSP and no native module is needed. Don't add them
   without a reason.
-- Animated characters are pre-rendered sprite sheets, registered in `SPRITES` in `services/game/media.ts`,
-  with no 3D at runtime. Without a sheet, the character is its emoji, animated in code.
+- Feed the Cat is the one 3D game, and the one exception to the line above: three.js on the WebGL context
+  from `expo-gl`. three.js loads with `import('three')` only when the game opens, so no other screen runs it.
+  The cat is built from shapes in code (`cat-model.ts`), with no model file or textures, and its moves are
+  pure functions in `character-motion.ts`. The emoji shows until the first 3D frame draws and stays if 3D
+  fails, so the game always works. Don't add more 3D without weighing the code size against this one game.
+  Test three.js changes on Android: phones run Hermes, not a browser engine, so a web test can pass while
+  Android fails. That is how the missing `FinalizationRegistry` was found.
 - Art and audio are registered by key in `services/game/media.ts`. An item with no file falls back
   to its emoji and to text-to-speech. Never assume a voice exists: `audioManager.canSpeak` can be
   false, and every game must stay playable with no sound.
@@ -363,10 +368,10 @@ and secrets are deployed and a sandbox payment has worked end to end (Plans.md �
 ## 6. Current status — 2026-11-01
 
 Stages 1–3 of [Plans.md](Plans.md) §13 are code-complete and pushed to `master`. Cloudflare built the web
-app from that push, ahead of Android. **Phones get none of it until they install a 1.2.0 build**, because
-that push skipped OTA by design. The `internal` APK reaches the login screen on an Android 16 emulator.
-Nothing past login has run natively, and nothing has run on a physical phone. Games and screens are
-tested on web only. Every owner step is listed in §13.7.
+app from that push, ahead of Android. **Phones get none of it until they install a 1.3.0 build**, because
+that push skipped OTA by design. On an Android 16 emulator, a test build ran Feed the Cat in 3D with real
+swipes, and reached the login screen. Nothing else past login has run natively, and nothing has run on a
+physical phone, so the other games and screens are tested on web only. Every owner step is listed in §13.7.
 
 ### Code-complete, not yet on phones
 Register/login with password reset · account deletion · privacy policy (BM and English, draft) ·
@@ -378,7 +383,7 @@ are set) · hardened payment functions (client closed by `PAYMENT_OPEN`).
 ### Blocked on the owner, not on code
 | Item | Blocker |
 |---|---|
-| Android | Test a 1.2.0 build on a real phone, then `eas build --profile production`. Older phones still run old code. |
+| Android | Test a 1.3.0 build on a real phone, then `eas build --profile production`. Older phones still run old code. |
 | Sunat / Quran / Doa trackers | Run `supabase/migrations/005_phase2_logs.sql`. |
 | Account deletion | Deploy the `delete-account` function. |
 | Password reset, email verification | Supabase email templates need `{{ .Token }}`, plus custom SMTP. |
@@ -386,8 +391,6 @@ are set) · hardened payment functions (client closed by `PAYMENT_OPEN`).
 | Web (PWA) | Cloudflare is connected. Test the live address, and don't share it until Android is out (§4). |
 | AdMob | Real app ids in `app.json`, unit ids in `constants/ads.ts`. |
 | Kids games art and audio | About 105 illustrations, 350 voice clips, 15 animal sounds. Emoji and text-to-speech stand in. |
-| Feed the Cat artwork | Optional. A sprite sheet, then one line in `SPRITES`. Its emoji is animated until then. |
-
 ### Not built
 BM/English outside the games (Stage 4) · the UI redesign from the reference image (Stage 4).
 

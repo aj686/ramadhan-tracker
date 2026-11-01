@@ -661,13 +661,13 @@ BlurView intensity: 60
 - [x] 5. Replace the 👳 Prophets icon with a non-figurative one (S)
 - [x] 6. Password reset, account deletion and privacy policy (M) — owner deploys, see §13.7
 - [x] 7. Move the email out of the register URL, ready for email verification (S)
-- [ ] 8. Device test, then production `eas build` (M) — owner. The `internal` APK for 1.2.0 builds and reaches login on an emulator
+- [ ] 8. Device test, then production `eas build` (M) — owner. The `internal` APK builds and runs on an emulator
 - [ ] 9. Test the live web app (S) — owner. Cloudflare is connected and built from the 2026-11-01 push, ahead of item 8
 - [x] 10. Correct the stale parts of CLAUDE.md and Plans.md (S)
 
 ### 13.4 Stage 2 — Kids games
 
-27 activities on 9 mechanics: the 26 from the brief, plus Feed the Cat (`t-feed`), added for animation. Games use the reference image's look from the start.
+27 activities on 9 mechanics: the 26 from the brief, plus Feed the Cat (`t-feed`), added as a real-time 3D game with three.js. Games use the reference image's look from the start.
 
 - [ ] 11. Commission art, audio and animal sounds; review BM text (S to start) — owner
 - [x] 12. First playable: content format, game logic, audio, BM/English, game shell, Animal Sounds, Colour Sorting (L)
@@ -710,8 +710,8 @@ Code cannot do these. Stages 1–3 are pushed to `master`, and Cloudflare built 
 
 **1. Before any release**
 - [x] Commit and push Stages 1–3. `app.json` and `package.json` changed, so that push skipped OTA by design.
-- [ ] Push the ad library fix. Until it is on `master`, the automatic Android build from each push keeps failing.
-- [ ] Test on a real Android phone. The `internal` APK reaches login on an Android 16 emulator, and nothing past login has run natively: drag, tracing, speech, sounds, notifications and PDF sharing were only tested on web, or not at all.
+- [x] Push the ad library fix.
+- [ ] Test on a real Android phone, including how smooth and warm the 3D game feels. An Android 16 emulator ran Feed the Cat in 3D with real swipes, and nothing else past login has run natively: other games, tracing, speech, sounds, notifications and PDF sharing were only tested on web, or not at all.
 
 **2. Supabase**
 - [ ] Run `supabase/migrations/005_phase2_logs.sql` in the SQL Editor, or `supabase db push`. Safe if the old SQL already ran.
@@ -735,7 +735,6 @@ Code cannot do these. Stages 1–3 are pushed to `master`, and Cloudflare built 
 - [ ] Have the privacy policy reviewed. It is a draft, in BM and English, written from what the app really collects.
 
 **6. Art and audio for the games** (emoji and text-to-speech stand in until then)
-- [ ] Optional: Feed the Cat sprite sheet. One WebP of 30 frames at 256 x 256, in 6 columns and 5 rows, 350 KB at most, with the frame order in `services/game/sprite.ts`. Then add its one line to `SPRITES` in `services/game/media.ts`.
 - [ ] About 105 illustrations: 8 shapes, 48 fruits, occupations, body parts and clothing, 27 animals and vehicles, 6 puzzle scenes, 10 category cards, 2 age cards, 5–6 mascot poses.
 - [ ] About 350 voice clips: 258 words in both languages, 90 prompts and feedback.
 - [ ] 15 licensed animal sounds. The keys are listed in `services/game/media.ts`. Until then a voice reads the sound word, such as "Moo".

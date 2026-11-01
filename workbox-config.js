@@ -1,6 +1,6 @@
 module.exports = {
   globDirectory: 'dist',
-  globPatterns: ['**/*.{html,js,css,png,webp,ico,json}', '**/Ionicons.*.ttf'],
+  globPatterns: ['**/*.{html,js,css,png,ico,json}', '**/Ionicons.*.ttf'],
   globIgnores: [],
   swDest: 'dist/sw.js',
   inlineWorkboxRuntime: true,

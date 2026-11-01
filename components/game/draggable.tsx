@@ -9,6 +9,9 @@ interface DraggableProps {
   label: string;
   disabled?: boolean;
   onDragStart?: () => void;
+  // Screen coordinates of the finger, on every move. Keep this cheap: it must not cause a render.
+  onDragMove?: (pageX: number, pageY: number) => void;
+  onDragEnd?: () => void;
   // Screen coordinates of the release point.
   onDrop: (pageX: number, pageY: number) => void;
   onTap: () => void;
@@ -22,21 +25,25 @@ export const Draggable: React.FC<DraggableProps> = ({
   label,
   disabled = false,
   onDragStart,
+  onDragMove,
+  onDragEnd,
   onDrop,
   onTap,
 }) => {
   const [pan] = useState(() => new Animated.ValueXY());
   const [isDragging, setIsDragging] = useState(false);
-  const latest = useRef({ onDragStart, onDrop, onTap, disabled });
+  const latest = useRef({ onDragStart, onDragMove, onDragEnd, onDrop, onTap, disabled });
 
   useEffect(() => {
-    latest.current = { onDragStart, onDrop, onTap, disabled };
+    latest.current = { onDragStart, onDragMove, onDragEnd, onDrop, onTap, disabled };
   });
 
   const [responder] = useState(() => {
     const returnHome = () => {
       Animated.spring(pan, { toValue: { x: 0, y: 0 }, useNativeDriver: false, speed: 24 }).start();
     };
+
+    const followFinger = Animated.event([null, { dx: pan.x, dy: pan.y }], { useNativeDriver: false });
 
     return PanResponder.create({
       onStartShouldSetPanResponder: () => !latest.current.disabled,
@@ -45,9 +52,13 @@ export const Draggable: React.FC<DraggableProps> = ({
         setIsDragging(true);
         latest.current.onDragStart?.();
       },
-      onPanResponderMove: Animated.event([null, { dx: pan.x, dy: pan.y }], { useNativeDriver: false }),
+      onPanResponderMove: (event, gesture) => {
+        followFinger(event, gesture);
+        latest.current.onDragMove?.(gesture.moveX, gesture.moveY);
+      },
       onPanResponderRelease: (_, gesture) => {
         setIsDragging(false);
+        latest.current.onDragEnd?.();
         if (Math.hypot(gesture.dx, gesture.dy) < TAP_DISTANCE) {
           pan.setValue({ x: 0, y: 0 });
           latest.current.onTap();
@@ -58,6 +69,7 @@ export const Draggable: React.FC<DraggableProps> = ({
       },
       onPanResponderTerminate: () => {
         setIsDragging(false);
+        latest.current.onDragEnd?.();
         returnHome();
       },
     });

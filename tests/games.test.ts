@@ -8,7 +8,9 @@ import { advanceCheckpoint, samplePolyline, segmentStyle } from '../services/gam
 import { applySessionResult, pickNextActivity, summarizeProgress } from '../services/game/progress';
 import { buildQuestions, roundCount } from '../services/game/question-builder';
 import { createSession, sessionReducer, type SessionState, starsFor } from '../services/game/session';
-import { CHARACTER_SHEET, clipFinished, frameAt, framePosition, nextClip } from '../services/game/sprite';
+import * as THREE from 'three';
+import { buildCat } from '../components/game/cat-model';
+import { type CharacterClip, CLIP_MS, clipFinished, nextClip, poseAt } from '../services/game/character-motion';
 
 const LANGS: Lang[] = ['ms', 'en'];
 const SEEDS = [1, 7, 42, 12345, 987654];
@@ -16,40 +18,80 @@ const SEEDS = [1, 7, 42, 12345, 987654];
 const play = (state: SessionState, ...actions: Parameters<typeof sessionReducer>[1][]) =>
   actions.reduce(sessionReducer, state);
 
-describe('sprite sheet', () => {
-  const { clips, fps, columns, rows } = CHARACTER_SHEET;
+describe('character motion', () => {
+  const ONE_SHOTS: CharacterClip[] = ['eat', 'no', 'happy'];
+  const samePose = (a: ReturnType<typeof poseAt>, b: ReturnType<typeof poseAt>, label: string) => {
+    for (const key of Object.keys(a) as (keyof typeof a)[]) {
+      assert.ok(Math.abs(a[key] - b[key]) < 1e-9, `${label}: ${key} ${a[key]} vs ${b[key]}`);
+    }
+  };
 
-  it('uses every frame in the grid exactly once', () => {
-    const used = Object.values(clips).flatMap((clip) =>
-      Array.from({ length: clip.frames }, (_, i) => clip.start + i),
-    );
-    assert.deepEqual([...used].sort((a, b) => a - b), Array.from({ length: columns * rows }, (_, i) => i));
+  it('joins the idle loop with no jump, and never finishes it', () => {
+    samePose(poseAt('idle', 0), poseAt('idle', CLIP_MS.idle), 'idle loop');
+    assert.equal(clipFinished('idle', 1_000_000), false);
   });
 
-  it('wraps a looping clip and never finishes it', () => {
-    const frameTime = 1000 / fps;
-    assert.equal(frameAt(0, clips.idle, fps), clips.idle.start);
-    assert.equal(frameAt(frameTime * clips.idle.frames, clips.idle, fps), clips.idle.start);
-    assert.equal(clipFinished(1_000_000, clips.idle, fps), false);
-  });
+  for (const clip of ONE_SHOTS) {
+    it(`${clip} starts and ends where idle begins, so nothing jumps`, () => {
+      samePose(poseAt(clip, 0), poseAt('idle', 0), `${clip} start`);
+      samePose(poseAt(clip, CLIP_MS[clip]), poseAt('idle', 0), `${clip} end`);
+      samePose(poseAt(clip, CLIP_MS[clip] * 5), poseAt('idle', 0), `${clip} after the end`);
+    });
 
-  it('holds a one-shot clip on its last frame, then finishes it', () => {
-    const last = clips.no.start + clips.no.frames - 1;
-    assert.equal(frameAt(1_000_000, clips.no, fps), last);
-    assert.equal(clipFinished(0, clips.no, fps), false);
-    assert.equal(clipFinished((clips.no.frames / fps) * 1000, clips.no, fps), true);
-  });
+    it(`${clip} moves part-way through, and stays in range`, () => {
+      const moves = new Set<number>();
+      for (let ms = 0; ms <= CLIP_MS[clip]; ms += 20) {
+        const pose = poseAt(clip, ms);
+        moves.add(pose.jaw + pose.lift + pose.headYaw + pose.ears);
+        assert.ok(pose.jaw >= 0 && pose.jaw <= 1, 'jaw');
+        assert.ok(pose.blink >= 0 && pose.blink <= 1, 'blink');
+        assert.ok(pose.lift >= 0 && pose.lift <= 0.7, 'lift');
+        assert.ok(pose.squash > 0.8 && pose.squash < 1.2, 'squash');
+      }
+      assert.ok(moves.size > 5, 'the pose changes');
+    });
+  }
 
-  it('finds a frame in the grid', () => {
-    assert.deepEqual(framePosition(0, CHARACTER_SHEET), { column: 0, row: 0 });
-    assert.deepEqual(framePosition(7, CHARACTER_SHEET), { column: 1, row: 1 });
-    assert.deepEqual(framePosition(29, CHARACTER_SHEET), { column: 5, row: 4 });
+  it('finishes a one-shot clip at its length', () => {
+    assert.equal(clipFinished('no', CLIP_MS.no - 1), false);
+    assert.equal(clipFinished('no', CLIP_MS.no), true);
   });
 
   it('goes from eating to joy, and settles back to idle', () => {
     assert.equal(nextClip('eat'), 'happy');
     assert.equal(nextClip('happy'), 'idle');
     assert.equal(nextClip('no'), 'idle');
+  });
+});
+
+describe('3D cat', () => {
+  const countTriangles = (root: THREE.Object3D) => {
+    let triangles = 0;
+    root.traverse((node) => {
+      const geometry = (node as THREE.Mesh).geometry;
+      if (geometry?.index) triangles += geometry.index.count / 3;
+    });
+    return triangles;
+  };
+
+  it('stays under the triangle budget', () => {
+    const cat = buildCat(THREE);
+    const triangles = countTriangles(cat.root);
+    assert.ok(triangles > 1000 && triangles < 12000, `${triangles} triangles`);
+    cat.dispose();
+  });
+
+  it('applies a pose without error, and the pose moves it', () => {
+    const cat = buildCat(THREE);
+    const positions = () => {
+      cat.root.updateMatrixWorld(true);
+      return JSON.stringify(cat.root.children.map((child) => child.matrixWorld.elements));
+    };
+    cat.apply(poseAt('idle', 0), 0, 0);
+    const before = positions();
+    cat.apply(poseAt('happy', CLIP_MS.happy / 4), 0.5, -0.5);
+    assert.notEqual(positions(), before);
+    cat.dispose();
   });
 });
 

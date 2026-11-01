@@ -44,6 +44,7 @@ export const GameRenderer: React.FC<GameRendererProps> = ({ question, language, 
     case 'fill':
       return <FillGame key={key} question={question} {...props} />;
     case 'feed':
-      return <FeedGame key={key} question={question} {...props} />;
+      // No question in the key: this game keeps its 3D scene for every round, and restarts the round itself.
+      return <FeedGame key="feed" question={question} {...props} />;
   }
 };
