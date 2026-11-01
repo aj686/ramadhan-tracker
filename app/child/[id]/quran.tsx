@@ -2,25 +2,27 @@ import React, { useEffect, useState, useMemo } from 'react';
 import {
   View, Text, TouchableOpacity, StyleSheet, ScrollView, ActivityIndicator,
 } from 'react-native';
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useLocalSearchParams } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useGoBack } from '@/hooks/use-go-back';
+import { useRefetchOnForeground } from '@/hooks/use-refetch-on-foreground';
 import { useTheme } from '@/hooks/use-theme';
 import { useChildren } from '@/hooks/use-children';
 import { useQuran, QURAN_TOTAL_PAGES } from '@/hooks/use-quran';
 import { PremiumGate } from '@/components/premium-gate';
+import { alertNotSaved } from '@/services/save-error';
 import { borderRadius, spacing, typography } from '@/constants/theme';
 
 const MONTH_NAMES = ['January','February','March','April','May','June','July','August','September','October','November','December'];
 const MONTH_SHORT = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 const DAY_SHORT   = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
 const CURRENT_YEAR = new Date().getFullYear();
-const TODAY = new Date();
 
-function buildMonthDays(year: number, month: number) {
-  const todayMs = new Date(new Date().toDateString()).getTime();
+function buildMonthDays(year: number, month: number, todayKey: string) {
+  const todayMs = new Date(todayKey).getTime();
   const daysInMonth = new Date(year, month + 1, 0).getDate();
   return Array.from({ length: daysInMonth }, (_, i) => {
     const day = i + 1;
@@ -41,16 +43,27 @@ export default function QuranScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { colors, isDark } = useTheme();
   const insets = useSafeAreaInsets();
-  const router = useRouter();
+  const goBack = useGoBack(`/child/${id}`);
   const { children } = useChildren();
   const { fetchQuranLogs, updatePages, getPagesForDate, calculateStats, getMonthPages, isLoading } = useQuran(id);
   const child = children.find((c) => c.id === id);
-  const [selectedMonth, setSelectedMonth] = useState(TODAY.getMonth());
+  const [selectedMonth, setSelectedMonth] = useState(() => new Date().getMonth());
+  const TODAY = new Date();
+  const todayKey = TODAY.toDateString();
 
   useEffect(() => { fetchQuranLogs(); }, [fetchQuranLogs]);
 
+  useRefetchOnForeground(() => {
+    fetchQuranLogs({ silent: true });
+  });
+
+  const handleUpdatePages = async (date: string, pages: number) => {
+    const result = await updatePages(date, pages);
+    if (!result.success) alertNotSaved();
+  };
+
   const stats = calculateStats();
-  const selectedDays = useMemo(() => buildMonthDays(CURRENT_YEAR, selectedMonth), [selectedMonth]);
+  const selectedDays = useMemo(() => buildMonthDays(CURRENT_YEAR, selectedMonth, todayKey), [selectedMonth, todayKey]);
 
   // Per-month page totals for grid
   const monthPages = useMemo(
@@ -73,7 +86,7 @@ export default function QuranScreen() {
 
       {/* Header */}
       <View style={[styles.header, { paddingTop: insets.top + spacing.md }]}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
+        <TouchableOpacity onPress={goBack} style={styles.backBtn}>
           <Ionicons name="arrow-back" size={24} color={colors.quranColor} />
         </TouchableOpacity>
         <View style={styles.headerCenter}>
@@ -229,7 +242,7 @@ export default function QuranScreen() {
                   <View style={styles.colStepper}>
                     <TouchableOpacity
                       style={[styles.stepBtn, { backgroundColor: colors.quranMuted }]}
-                      onPress={() => updatePages(item.date, pages - 1)}
+                      onPress={() => handleUpdatePages(item.date, pages - 1)}
                       disabled={pages === 0}
                     >
                       <Ionicons name="remove" size={14} color={pages === 0 ? colors.borderLight : colors.quranColor} />
@@ -237,7 +250,7 @@ export default function QuranScreen() {
                     <Text style={[styles.stepNum, { color: colors.text }]}>{pages}</Text>
                     <TouchableOpacity
                       style={[styles.stepBtn, { backgroundColor: colors.quranColor }]}
-                      onPress={() => updatePages(item.date, pages + 1)}
+                      onPress={() => handleUpdatePages(item.date, pages + 1)}
                     >
                       <Ionicons name="add" size={14} color="#FFF" />
                     </TouchableOpacity>

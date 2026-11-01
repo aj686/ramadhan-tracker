@@ -1,7 +1,7 @@
 import { useCallback } from 'react';
 import { supabase } from '@/services/supabase';
 import { usePrayerStore } from '@/store/prayer-store';
-import { PrayerLog, PrayerName } from '@/types';
+import { FetchOptions, PrayerLog, PrayerName } from '@/types';
 
 export const PRAYER_NAMES: { key: PrayerName; label: string; short: string }[] = [
   { key: 'fajr', label: 'Fajr', short: 'F' },
@@ -16,11 +16,13 @@ export const usePrayer = (childId: string) => {
 
   const childLogs = logs[childId] || [];
 
-  const fetchPrayerLogs = useCallback(async () => {
+  const fetchPrayerLogs = useCallback(async ({ silent = false }: FetchOptions = {}) => {
     if (!childId) return;
 
-    setLoading(true);
-    setError(null);
+    if (!silent) {
+      setLoading(true);
+      setError(null);
+    }
 
     try {
       const { data, error: fetchError } = await supabase
@@ -33,10 +35,12 @@ export const usePrayer = (childId: string) => {
 
       setLogs(childId, data as PrayerLog[]);
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to fetch prayer logs';
-      setError(message);
+      if (!silent) {
+        const message = err instanceof Error ? err.message : 'Failed to fetch prayer logs';
+        setError(message);
+      }
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   }, [childId, setLogs, setLoading, setError]);
 
@@ -46,7 +50,8 @@ export const usePrayer = (childId: string) => {
     const freshLogs = usePrayerStore.getState().logs[childId] || [];
     const existing = freshLogs.find((l) => l.date === date);
 
-    const prayerData = {
+    const optimisticLog: PrayerLog = {
+      id: existing?.id ?? `temp-${date}`,
       child_id: childId,
       date,
       fajr: existing?.fajr ?? false,
@@ -56,17 +61,15 @@ export const usePrayer = (childId: string) => {
       isha: existing?.isha ?? false,
       [prayer]: completed,
     };
-
-    const optimisticLog: PrayerLog = {
-      id: existing?.id ?? `temp-${date}`,
-      ...prayerData,
-    };
     upsertLog(childId, optimisticLog);
 
     try {
       const { data, error: upsertError } = await supabase
         .from('prayer_log')
-        .upsert(prayerData, { onConflict: 'child_id,date' })
+        .upsert(
+          { child_id: childId, date, [prayer]: completed },
+          { onConflict: 'child_id,date' },
+        )
         .select()
         .single();
 
@@ -75,9 +78,10 @@ export const usePrayer = (childId: string) => {
       upsertLog(childId, data as PrayerLog);
       return { success: true, log: data as PrayerLog };
     } catch (err) {
-      if (existing) {
-        upsertLog(childId, existing);
-      }
+      const latestLogs = usePrayerStore.getState().logs[childId] || [];
+      const latest = latestLogs.find((l) => l.date === date) ?? optimisticLog;
+      upsertLog(childId, { ...latest, [prayer]: existing?.[prayer] ?? false });
+
       const message = err instanceof Error ? err.message : 'Failed to update prayer';
       setError(message);
       return { success: false, error: message };

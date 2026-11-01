@@ -2,15 +2,19 @@ import React, { useEffect, useCallback } from 'react';
 import {
   View, Text, TouchableOpacity, StyleSheet, ScrollView, ActivityIndicator,
 } from 'react-native';
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useLocalSearchParams } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useGoBack } from '@/hooks/use-go-back';
+import { useRefetchOnForeground } from '@/hooks/use-refetch-on-foreground';
 import { useTheme } from '@/hooks/use-theme';
 import { useChildren } from '@/hooks/use-children';
 import { useFasting } from '@/hooks/use-fasting';
 import { useRewards } from '@/hooks/use-rewards';
+import { parseDateKey } from '@/services/dates';
+import { alertNotSaved } from '@/services/save-error';
 import { borderRadius, spacing, typography } from '@/constants/theme';
 import { FastingStatus } from '@/types';
 
@@ -24,7 +28,7 @@ export default function FastingScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { colors, isDark } = useTheme();
   const insets = useSafeAreaInsets();
-  const router = useRouter();
+  const goBack = useGoBack(`/child/${id}`);
   const { children } = useChildren();
   const { logs, isLoading, fetchFastingLogs, updateFastingStatus, getStatusForDate, calculateStats, ramadanDates } = useFasting(id);
   const { rewards, fetchRewards } = useRewards();
@@ -36,10 +40,15 @@ export default function FastingScreen() {
     fetchRewards();
   }, [fetchFastingLogs, fetchRewards]);
 
+  useRefetchOnForeground(() => {
+    fetchFastingLogs({ silent: true });
+  });
+
   const handleStatusChange = useCallback(async (date: string, status: FastingStatus) => {
     const current = getStatusForDate(date);
     if (current === status) return;
-    await updateFastingStatus(date, status);
+    const result = await updateFastingStatus(date, status);
+    if (!result.success) alertNotSaved();
   }, [getStatusForDate, updateFastingStatus]);
 
   const stats = calculateStats();
@@ -63,7 +72,7 @@ export default function FastingScreen() {
 
       {/* Header */}
       <View style={[styles.header, { paddingTop: insets.top + spacing.md }]}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
+        <TouchableOpacity onPress={goBack} style={styles.backBtn}>
           <Ionicons name="arrow-back" size={24} color={colors.fastingColor} />
         </TouchableOpacity>
         <View style={styles.headerCenter}>
@@ -134,7 +143,7 @@ export default function FastingScreen() {
         ) : (
           ramadanDates.map((date) => {
             const status = getStatusForDate(date);
-            const dayObj = new Date(date);
+            const dayObj = parseDateKey(date);
             const dayNum = dayObj.getDate();
             const month = dayObj.toLocaleDateString('en-US', { month: 'short' });
 

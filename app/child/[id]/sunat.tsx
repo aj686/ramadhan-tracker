@@ -2,25 +2,25 @@ import React, { useEffect, useState, useMemo } from 'react';
 import {
   View, Text, TouchableOpacity, StyleSheet, ScrollView, ActivityIndicator,
 } from 'react-native';
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useLocalSearchParams } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useGoBack } from '@/hooks/use-go-back';
+import { useRefetchOnForeground } from '@/hooks/use-refetch-on-foreground';
 import { useTheme } from '@/hooks/use-theme';
 import { useChildren } from '@/hooks/use-children';
 import { useSunat, getSunatDates, SUNAT_TYPE_LABELS } from '@/hooks/use-sunat';
 import { PremiumGate } from '@/components/premium-gate';
+import { parseDateKey, toDateKey } from '@/services/dates';
+import { alertNotSaved } from '@/services/save-error';
 import { borderRadius, spacing, typography } from '@/constants/theme';
 import { SunatType } from '@/types';
 
 const MONTH_SHORT = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 const DAY_SHORT   = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
 const CURRENT_YEAR = new Date().getFullYear();
-const TODAY_STR = (() => {
-  const t = new Date();
-  return `${t.getFullYear()}-${String(t.getMonth()+1).padStart(2,'0')}-${String(t.getDate()).padStart(2,'0')}`;
-})();
 
 const TYPE_TABS: { value: SunatType; icon: string }[] = [
   { value: 'isnin_khamis', icon: 'calendar' },
@@ -32,13 +32,24 @@ export default function SunatScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { colors, isDark } = useTheme();
   const insets = useSafeAreaInsets();
-  const router = useRouter();
+  const goBack = useGoBack(`/child/${id}`);
   const { children } = useChildren();
   const { fetchSunatLogs, toggleSunat, isCompleted, calculateStats, isLoading } = useSunat(id);
   const child = children.find((c) => c.id === id);
   const [activeType, setActiveType] = useState<SunatType>('isnin_khamis');
 
   useEffect(() => { fetchSunatLogs(); }, [fetchSunatLogs]);
+
+  useRefetchOnForeground(() => {
+    fetchSunatLogs({ silent: true });
+  });
+
+  const todayKey = toDateKey(new Date());
+
+  const handleToggle = async (date: string, type: SunatType) => {
+    const result = await toggleSunat(date, type);
+    if (!result.success) alertNotSaved();
+  };
 
   const allDates = useMemo(() => getSunatDates(CURRENT_YEAR), []);
   const stats = calculateStats();
@@ -75,7 +86,7 @@ export default function SunatScreen() {
 
       {/* Header */}
       <View style={[styles.header, { paddingTop: insets.top + spacing.md }]}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
+        <TouchableOpacity onPress={goBack} style={styles.backBtn}>
           <Ionicons name="arrow-back" size={24} color={colors.sunatColor} />
         </TouchableOpacity>
         <View style={styles.headerCenter}>
@@ -160,7 +171,7 @@ export default function SunatScreen() {
               <View>
                 {allDates.arafah.map((date) => {
                   const done = isCompleted(date, 'arafah');
-                  const d = new Date(date);
+                  const d = parseDateKey(date);
                   return (
                     <View key={date} style={[styles.arafahCard, {
                       borderColor: done ? colors.sunatColor : colors.glassBorder,
@@ -182,7 +193,7 @@ export default function SunatScreen() {
                           </View>
                           <TouchableOpacity
                             style={[styles.doneBtn, { backgroundColor: done ? colors.sunatColor : colors.sunatMuted }]}
-                            onPress={() => toggleSunat(date, 'arafah')}
+                            onPress={() => handleToggle(date, 'arafah')}
                           >
                             <Ionicons name={done ? 'checkmark-circle' : 'ellipse-outline'} size={24} color={done ? '#FFF' : colors.sunatColor} />
                           </TouchableOpacity>
@@ -205,11 +216,11 @@ export default function SunatScreen() {
                 <Text style={[styles.monthLabel, { color: colors.text }]}>{group.monthLabel}</Text>
                 {group.dates.map((date) => {
                   const done = isCompleted(date, activeType);
-                  const d = new Date(date);
+                  const d = parseDateKey(date);
                   const dayNum = d.getDate();
                   const dayName = DAY_SHORT[d.getDay()];
-                  const isToday = date === TODAY_STR;
-                  const isFuture = date > TODAY_STR;
+                  const isToday = date === todayKey;
+                  const isFuture = date > todayKey;
                   return (
                     <View
                       key={date}
@@ -231,7 +242,7 @@ export default function SunatScreen() {
                       <View style={[styles.divider, { backgroundColor: colors.borderLight }]} />
                       <TouchableOpacity
                         style={[styles.toggleBtn, { backgroundColor: done ? colors.sunatColor : colors.sunatMuted }]}
-                        onPress={() => toggleSunat(date, activeType)}
+                        onPress={() => handleToggle(date, activeType)}
                         activeOpacity={0.7}
                       >
                         <Ionicons

@@ -1,8 +1,9 @@
 import { useCallback } from 'react';
 import { supabase } from '@/services/supabase';
 import { useFastingStore } from '@/store/fasting-store';
-import { FastingLog, FastingStatus, ChildStats } from '@/types';
+import { FastingLog, FastingStatus, ChildStats, FetchOptions } from '@/types';
 import { useRewardsStore } from '@/store/rewards-store';
+import { parseDateKey, toDateKey } from '@/services/dates';
 
 // Ramadan 2026 / 1447 AH dates (February 18 - March 19, 2026)
 export const RAMADAN_START = '2026-02-18';
@@ -10,12 +11,12 @@ export const RAMADAN_DAYS = 30;
 
 export const getRamadanDates = (): string[] => {
   const dates: string[] = [];
-  const startDate = new Date(RAMADAN_START);
+  const startDate = parseDateKey(RAMADAN_START);
 
   for (let i = 0; i < RAMADAN_DAYS; i++) {
     const date = new Date(startDate);
     date.setDate(startDate.getDate() + i);
-    dates.push(date.toISOString().split('T')[0]);
+    dates.push(toDateKey(date));
   }
 
   return dates;
@@ -27,11 +28,13 @@ export const useFasting = (childId: string) => {
 
   const childLogs = logs[childId] || [];
 
-  const fetchFastingLogs = useCallback(async () => {
+  const fetchFastingLogs = useCallback(async ({ silent = false }: FetchOptions = {}) => {
     if (!childId) return;
 
-    setLoading(true);
-    setError(null);
+    if (!silent) {
+      setLoading(true);
+      setError(null);
+    }
 
     try {
       const { data, error: fetchError } = await supabase
@@ -44,10 +47,12 @@ export const useFasting = (childId: string) => {
 
       setLogs(childId, data as FastingLog[]);
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to fetch fasting logs';
-      setError(message);
+      if (!silent) {
+        const message = err instanceof Error ? err.message : 'Failed to fetch fasting logs';
+        setError(message);
+      }
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   }, [childId, setLogs, setLoading, setError]);
 

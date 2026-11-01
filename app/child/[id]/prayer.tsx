@@ -7,14 +7,17 @@ import {
   ScrollView,
   ActivityIndicator,
 } from 'react-native';
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useLocalSearchParams } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useGoBack } from '@/hooks/use-go-back';
+import { useRefetchOnForeground } from '@/hooks/use-refetch-on-foreground';
 import { useTheme } from '@/hooks/use-theme';
 import { useChildren } from '@/hooks/use-children';
 import { usePrayer, PRAYER_NAMES } from '@/hooks/use-prayer';
+import { alertNotSaved } from '@/services/save-error';
 import { borderRadius, spacing, typography } from '@/constants/theme';
 import { PrayerName } from '@/types';
 
@@ -36,8 +39,8 @@ interface DayItem {
   isFuture: boolean;
 }
 
-function buildMonthDays(year: number, month: number): DayItem[] {
-  const todayMs = new Date(new Date().toDateString()).getTime();
+function buildMonthDays(year: number, month: number, todayKey: string): DayItem[] {
+  const todayMs = new Date(todayKey).getTime();
   const daysInMonth = new Date(year, month + 1, 0).getDate();
   return Array.from({ length: daysInMonth }, (_, i) => {
     const day = i + 1;
@@ -54,16 +57,13 @@ function buildMonthDays(year: number, month: number): DayItem[] {
   });
 }
 
-const CURRENT_YEAR = new Date().getFullYear();
-const TODAY = new Date();
-
 // ─── Component ───────────────────────────────────────────────────────────────
 
 export default function PrayerScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { colors, isDark } = useTheme();
   const insets = useSafeAreaInsets();
-  const router = useRouter();
+  const goBack = useGoBack(`/child/${id}`);
   const { children } = useChildren();
   const {
     fetchPrayerLogs,
@@ -76,11 +76,20 @@ export default function PrayerScreen() {
   } = usePrayer(id);
 
   const child = children.find((c) => c.id === id);
-  const [selectedMonth, setSelectedMonth] = useState(TODAY.getMonth());
+  const [selectedMonth, setSelectedMonth] = useState(() => new Date().getMonth());
+
+  const now = new Date();
+  const todayKey = now.toDateString();
+  const today = useMemo(() => new Date(todayKey), [todayKey]);
+  const currentYear = today.getFullYear();
 
   useEffect(() => {
     fetchPrayerLogs();
   }, [fetchPrayerLogs]);
+
+  useRefetchOnForeground(() => {
+    fetchPrayerLogs({ silent: true });
+  });
 
   // Per-month stats map: month index → { done, possible, pct }
   const monthStats = useMemo(() => {
@@ -93,43 +102,44 @@ export default function PrayerScreen() {
 
     return Array.from({ length: 12 }, (_, month) => {
       const mm = String(month + 1).padStart(2, '0');
-      const key = `${CURRENT_YEAR}-${mm}`;
-      const daysInMonth = new Date(CURRENT_YEAR, month + 1, 0).getDate();
+      const key = `${currentYear}-${mm}`;
+      const daysInMonth = new Date(currentYear, month + 1, 0).getDate();
 
       // For past/current months count elapsed days; future months = 0 possible
-      const monthEnd = new Date(CURRENT_YEAR, month + 1, 0);
-      const isPastMonth = monthEnd < TODAY && month !== TODAY.getMonth();
-      const isCurrentMonth = month === TODAY.getMonth() && CURRENT_YEAR === TODAY.getFullYear();
-      const isFutureMonth = monthEnd > TODAY && !isCurrentMonth;
+      const monthEnd = new Date(currentYear, month + 1, 0);
+      const isPastMonth = monthEnd < today && month !== today.getMonth();
+      const isCurrentMonth = month === today.getMonth() && currentYear === today.getFullYear();
+      const isFutureMonth = monthEnd > today && !isCurrentMonth;
 
       let possible = 0;
       if (isPastMonth) possible = daysInMonth * 5;
-      else if (isCurrentMonth) possible = TODAY.getDate() * 5;
+      else if (isCurrentMonth) possible = today.getDate() * 5;
       // future: possible stays 0
 
       const done = map[key] ?? 0;
       const pct = possible > 0 ? Math.min(100, Math.round((done / possible) * 100)) : 0;
       return { done, possible, pct, isFutureMonth, daysInMonth };
     });
-  }, [logs]);
+  }, [logs, today, currentYear]);
 
   // Year-to-date summary
   const yearTotal = getTotalPrayerCount();
-  const yearStart = new Date(CURRENT_YEAR, 0, 1);
-  const daysElapsed = Math.max(1, Math.floor((TODAY.getTime() - yearStart.getTime()) / 86400000) + 1);
+  const yearStart = new Date(currentYear, 0, 1);
+  const daysElapsed = Math.max(1, Math.floor((now.getTime() - yearStart.getTime()) / 86400000) + 1);
   const possibleSoFar = daysElapsed * 5;
   const yearPct = Math.min(100, Math.round((yearTotal / possibleSoFar) * 100));
 
   // Days for selected month
   const selectedDays = useMemo(
-    () => buildMonthDays(CURRENT_YEAR, selectedMonth),
-    [selectedMonth],
+    () => buildMonthDays(currentYear, selectedMonth, todayKey),
+    [currentYear, selectedMonth, todayKey],
   );
 
   const handlePrayerToggle = useCallback(async (
     date: string, prayer: PrayerName, currentValue: boolean,
   ) => {
-    await updatePrayer(date, prayer, !currentValue);
+    const result = await updatePrayer(date, prayer, !currentValue);
+    if (!result.success) alertNotSaved();
   }, [updatePrayer]);
 
   const selectedStats = monthStats[selectedMonth];
@@ -146,13 +156,13 @@ export default function PrayerScreen() {
 
       {/* Header */}
       <View style={[styles.header, { paddingTop: insets.top + spacing.md }]}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
+        <TouchableOpacity onPress={goBack} style={styles.backBtn}>
           <Ionicons name="arrow-back" size={24} color={colors.prayerColor} />
         </TouchableOpacity>
         <View style={styles.headerCenter}>
           <Text style={[styles.headerTitle, { color: colors.text }]}>Solat 5 Waktu</Text>
           <Text style={[styles.headerSub, { color: colors.textSecondary }]}>
-            {child?.name ?? ''} — {CURRENT_YEAR}
+            {child?.name ?? ''} — {currentYear}
           </Text>
         </View>
         <View style={{ width: 40 }} />
@@ -179,7 +189,7 @@ export default function PrayerScreen() {
                 </View>
                 <View style={styles.summaryText}>
                   <Text style={[styles.summaryTitle, { color: colors.text }]}>
-                    {CURRENT_YEAR} Progress
+                    {currentYear} Progress
                   </Text>
                   <Text style={[styles.summaryCount, { color: colors.textSecondary }]}>
                     {yearTotal} / {possibleSoFar} prayers
@@ -205,7 +215,7 @@ export default function PrayerScreen() {
             {Array.from({ length: 12 }, (_, month) => {
               const stat = monthStats[month];
               const isSelected = month === selectedMonth;
-              const isCurrentMonth = month === TODAY.getMonth();
+              const isCurrentMonth = month === today.getMonth();
               const textColor = stat.isFutureMonth
                 ? colors.textMuted
                 : isSelected ? colors.prayerColor : colors.text;

@@ -5,7 +5,6 @@ import {
   TouchableOpacity,
   StyleSheet,
   ScrollView,
-  Alert,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -16,6 +15,7 @@ import { useTheme } from '@/hooks/use-theme';
 import { useAuth } from '@/hooks/use-auth';
 import { useSubscription } from '@/hooks/use-subscription';
 import { useThemeStore, ThemePreference } from '@/store/theme-store';
+import { Alert } from '@/services/alert';
 import { borderRadius, spacing, typography } from '@/constants/theme';
 
 const APP_VERSION = '1.0.0';
@@ -37,7 +37,19 @@ export default function ProfileScreen() {
   const handleLogout = () => {
     Alert.alert('Logout', 'Are you sure you want to logout?', [
       { text: 'Cancel', style: 'cancel' },
-      { text: 'Logout', style: 'destructive', onPress: logout },
+      {
+        text: 'Logout',
+        style: 'destructive',
+        onPress: async () => {
+          const { serverReached } = await logout();
+          if (!serverReached) {
+            Alert.alert(
+              'Logged out on this device',
+              'We could not reach the server, so your sign-in was only removed from this device.',
+            );
+          }
+        },
+      },
     ]);
   };
 

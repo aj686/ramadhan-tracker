@@ -1,7 +1,7 @@
 import { useCallback } from 'react';
 import { supabase } from '@/services/supabase';
 import { useQuranStore } from '@/store/quran-store';
-import { QuranLog } from '@/types';
+import { FetchOptions, QuranLog } from '@/types';
 
 export const QURAN_TOTAL_PAGES = 604; // 30 juz
 
@@ -11,10 +11,12 @@ export const useQuran = (childId: string) => {
 
   const childLogs = logs[childId] || [];
 
-  const fetchQuranLogs = useCallback(async () => {
+  const fetchQuranLogs = useCallback(async ({ silent = false }: FetchOptions = {}) => {
     if (!childId) return;
-    setLoading(true);
-    setError(null);
+    if (!silent) {
+      setLoading(true);
+      setError(null);
+    }
     try {
       const { data, error: err } = await supabase
         .from('quran_log')
@@ -24,17 +26,18 @@ export const useQuran = (childId: string) => {
       if (err) throw err;
       setLogs(childId, data as QuranLog[]);
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Failed to fetch quran logs');
+      if (!silent) setError(e instanceof Error ? e.message : 'Failed to fetch quran logs');
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   }, [childId, setLogs, setLoading, setError]);
 
   const updatePages = useCallback(
     async (date: string, pages: number) => {
-      if (!childId) return;
+      if (!childId) return { success: false, error: 'No child selected' };
       const safePages = Math.max(0, pages);
-      const existing = childLogs.find((l) => l.date === date);
+      const freshLogs = useQuranStore.getState().logs[childId] || [];
+      const existing = freshLogs.find((l) => l.date === date);
 
       // Optimistic
       const optimistic: QuranLog = {
@@ -56,12 +59,15 @@ export const useQuran = (childId: string) => {
           .single();
         if (err) throw err;
         upsertLog(childId, data as QuranLog);
+        return { success: true };
       } catch (e) {
-        if (existing) upsertLog(childId, existing);
-        setError(e instanceof Error ? e.message : 'Failed to update');
+        upsertLog(childId, existing ?? { ...optimistic, pages_read: 0 });
+        const message = e instanceof Error ? e.message : 'Failed to update';
+        setError(message);
+        return { success: false, error: message };
       }
     },
-    [childId, childLogs, upsertLog, setError],
+    [childId, upsertLog, setError],
   );
 
   const getPagesForDate = useCallback(

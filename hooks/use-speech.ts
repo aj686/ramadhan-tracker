@@ -5,13 +5,13 @@ import type { CardState } from '@/types';
 const delay = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
 
 function speak(text: string, lang = 'en-US', rate = 0.9): Promise<void> {
-  return new Promise((resolve, reject) => {
+  return new Promise((resolve) => {
     Speech.speak(text, {
       language: lang,
       rate,
-      onDone: resolve,
-      onError: reject,
-      onStopped: resolve,
+      onDone: () => resolve(),
+      onError: () => resolve(),
+      onStopped: () => resolve(),
     });
   });
 }

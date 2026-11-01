@@ -4,6 +4,13 @@ on:
   push:
     branches:
       - master
+    paths-ignore:
+      - 'public/**'
+      - 'workbox-config.js'
+      - 'wrangler.jsonc'
+      - 'scripts/web-postexport.js'
+      - 'scripts/sw-kill.js'
+      - '**.md'
   workflow_dispatch:
 
 permissions:

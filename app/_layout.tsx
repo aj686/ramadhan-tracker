@@ -3,11 +3,14 @@ import { Stack, useRouter, useSegments } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { useAuth } from '@/hooks/use-auth';
+import { useChildren } from '@/hooks/use-children';
 import { useTheme } from '@/hooks/use-theme';
+import { useSubscriptionStore } from '@/store/subscription-store';
 import { useThemeStore } from '@/store/theme-store';
 
 function RootLayoutNav() {
-  const { isAuthenticated, isLoading } = useAuth();
+  const { isAuthenticated, isLoading, user } = useAuth();
+  const { fetchChildren } = useChildren();
   const { colors, isDark } = useTheme();
   const { loadPreference } = useThemeStore();
 
@@ -15,6 +18,16 @@ function RootLayoutNav() {
   useEffect(() => {
     loadPreference();
   }, []);
+
+  useEffect(() => {
+    fetchChildren();
+  }, [fetchChildren]);
+
+  const userId = user?.id;
+  useEffect(() => {
+    if (userId) useSubscriptionStore.getState().checkSubscription();
+  }, [userId]);
+
   const segments = useSegments();
   const router = useRouter();
 

@@ -77,6 +77,10 @@ export interface UpdateRewardsInput {
   custom_reward_half?: string;
 }
 
+export interface FetchOptions {
+  silent?: boolean;
+}
+
 // Calculated child stats
 export interface ChildStats {
   fullDays: number;

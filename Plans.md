@@ -608,6 +608,28 @@ BlurView intensity: 60
 - [x] Security audit passed — no malicious code, no tracking, no dangerous permissions
 - [x] Premium screen and upgrade prompts show "Akan Datang · Coming Soon"; plan cards are read-only and no payment can start (2026-11-01)
 
+### Phase 6 — PWA (Cloudflare Workers) — 2026-11-01
+- [x] services/alert.ts + alert.web.ts — `Alert` works on web; 7 screens import it
+- [x] hooks/use-go-back.ts — back buttons work after a browser refresh; app/+not-found.tsx redirects to /
+- [x] hooks/use-speech.ts — speech errors resolve instead of rejecting
+- [x] Wide screens: 480px column, tab labels below icons, modals capped at 420px
+- [x] Logout uses local scope; a failed logout removes the local session and tells the user
+- [x] One store reset on `SIGNED_OUT` and on user change, including Sunat, Quran, Doa, subscription
+- [x] Prayer and Doa save only the changed column; failed taps revert that column and show an error
+- [x] hooks/use-refetch-on-foreground.ts — silent refetch on return (not on Rewards)
+- [x] Rewards form no longer wiped by `SIGNED_IN` on tab return
+- [x] Learn: Transport and Countries gated by URL too; children list fetched in the root layout
+- [x] Offline: stay signed in on a network failure; "today" computed in the component; date keys parse locally
+- [x] Login and register: Enter submits, autofill hints; `/_sitemap` disabled
+- [x] PWA layer: public/ (index.html, manifest, icons, register-sw, _headers), workbox-config.js, wrangler.jsonc
+- [x] scripts/web-postexport.js (CSP host, build ID, build check), scripts/sw-kill.js (recovery)
+- [x] eas-update.yml: `paths-ignore` for web-only files and `**.md`
+- [ ] ⚠️ TEST: Android regression on a device before any push
+- [ ] ⚠️ RELEASE: publish the shared fixes to Android (workflow_dispatch) before web goes live
+- [ ] ⚠️ DEPLOY: connect Cloudflare Workers Builds; set `EXPO_PUBLIC_SUPABASE_URL`, `EXPO_PUBLIC_SUPABASE_ANON_KEY`, `NODE_VERSION=22`
+- [ ] ⚠️ TEST: live Cloudflare address before sharing it: icon fonts, deep links, `_headers`, no CSP violations, login and saves
+- [ ] ⚠️ TEST: two devices on one account; iPhone Safari and Android Chrome install
+
 ---
 
 ## 12. Current Status — 2026-03-15

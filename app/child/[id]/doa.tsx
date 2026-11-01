@@ -2,15 +2,18 @@ import React, { useEffect, useState, useMemo } from 'react';
 import {
   View, Text, TouchableOpacity, StyleSheet, ScrollView, ActivityIndicator,
 } from 'react-native';
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useLocalSearchParams } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useGoBack } from '@/hooks/use-go-back';
+import { useRefetchOnForeground } from '@/hooks/use-refetch-on-foreground';
 import { useTheme } from '@/hooks/use-theme';
 import { useChildren } from '@/hooks/use-children';
 import { useDoa, DOA_ITEMS } from '@/hooks/use-doa';
 import { PremiumGate } from '@/components/premium-gate';
+import { alertNotSaved } from '@/services/save-error';
 import { borderRadius, spacing, typography } from '@/constants/theme';
 import { DoaKey } from '@/types';
 
@@ -18,11 +21,10 @@ const MONTH_NAMES = ['January','February','March','April','May','June','July','A
 const MONTH_SHORT = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 const DAY_SHORT   = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
 const CURRENT_YEAR = new Date().getFullYear();
-const TODAY = new Date();
 const DOA_TOTAL = DOA_ITEMS.length; // 6
 
-function buildMonthDays(year: number, month: number) {
-  const todayMs = new Date(new Date().toDateString()).getTime();
+function buildMonthDays(year: number, month: number, todayKey: string) {
+  const todayMs = new Date(todayKey).getTime();
   const daysInMonth = new Date(year, month + 1, 0).getDate();
   return Array.from({ length: daysInMonth }, (_, i) => {
     const day = i + 1;
@@ -43,16 +45,27 @@ export default function DoaScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { colors, isDark } = useTheme();
   const insets = useSafeAreaInsets();
-  const router = useRouter();
+  const goBack = useGoBack(`/child/${id}`);
   const { children } = useChildren();
   const { fetchDoaLogs, updateDoa, getDoaForDate, getDoaCountForDate, calculateStats, isLoading } = useDoa(id);
   const child = children.find((c) => c.id === id);
-  const [selectedMonth, setSelectedMonth] = useState(TODAY.getMonth());
+  const [selectedMonth, setSelectedMonth] = useState(() => new Date().getMonth());
+  const TODAY = new Date();
+  const todayKey = TODAY.toDateString();
 
   useEffect(() => { fetchDoaLogs(); }, [fetchDoaLogs]);
 
+  useRefetchOnForeground(() => {
+    fetchDoaLogs({ silent: true });
+  });
+
+  const handleToggle = async (date: string, key: DoaKey, value: boolean) => {
+    const result = await updateDoa(date, key, value);
+    if (!result.success) alertNotSaved();
+  };
+
   const stats = calculateStats();
-  const selectedDays = useMemo(() => buildMonthDays(CURRENT_YEAR, selectedMonth), [selectedMonth]);
+  const selectedDays = useMemo(() => buildMonthDays(CURRENT_YEAR, selectedMonth, todayKey), [selectedMonth, todayKey]);
 
   const yearTotal = stats.total;
   const yearStart = new Date(CURRENT_YEAR, 0, 1);
@@ -77,7 +90,7 @@ export default function DoaScreen() {
 
       {/* Header */}
       <View style={[styles.header, { paddingTop: insets.top + spacing.md }]}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
+        <TouchableOpacity onPress={goBack} style={styles.backBtn}>
           <Ionicons name="arrow-back" size={24} color={colors.doaColor} />
         </TouchableOpacity>
         <View style={styles.headerCenter}>
@@ -130,7 +143,7 @@ export default function DoaScreen() {
                 const isCurrentMonth = month === TODAY.getMonth();
                 const isFutureMonth = month > TODAY.getMonth();
                 // Quick month count from days
-                const mDays = buildMonthDays(CURRENT_YEAR, month);
+                const mDays = buildMonthDays(CURRENT_YEAR, month, todayKey);
                 const mDone = mDays.reduce((s, d) => s + getDoaCountForDate(d.date), 0);
                 const mPossible = mDays.filter((d) => !d.isFuture).length * DOA_TOTAL;
                 const mPct = mPossible > 0 ? Math.round((mDone / mPossible) * 100) : 0;
@@ -235,7 +248,7 @@ export default function DoaScreen() {
                         <TouchableOpacity
                           key={d.key}
                           style={[styles.doaBtn, { backgroundColor: done ? colors.doaColor : colors.doaMuted }]}
-                          onPress={() => updateDoa(item.date, d.key as DoaKey, !done)}
+                          onPress={() => handleToggle(item.date, d.key as DoaKey, !done)}
                           activeOpacity={0.7}
                           hitSlop={{ top:4, bottom:4, left:2, right:2 }}
                         >

@@ -5,18 +5,19 @@ import {
   TextInput,
   TouchableOpacity,
   StyleSheet,
-  Alert,
   KeyboardAvoidingView,
   Platform,
   ActivityIndicator,
 } from 'react-native';
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useLocalSearchParams } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuth } from '@/hooks/use-auth';
+import { useGoBack } from '@/hooks/use-go-back';
 import { useTheme } from '@/hooks/use-theme';
+import { Alert } from '@/services/alert';
 import { borderRadius, spacing, typography } from '@/constants/theme';
 
 const CODE_LENGTH = 6;
@@ -25,7 +26,7 @@ export default function VerifyScreen() {
   const { email } = useLocalSearchParams<{ email: string }>();
   const { colors, isDark } = useTheme();
   const insets = useSafeAreaInsets();
-  const router = useRouter();
+  const goBack = useGoBack('/(auth)/register');
   const { verifyOtp, resendVerification, isLoading } = useAuth();
 
   const [code, setCode] = useState<string[]>(Array(CODE_LENGTH).fill(''));
@@ -104,7 +105,7 @@ export default function VerifyScreen() {
 
           {/* Back button */}
           <TouchableOpacity
-            onPress={() => router.back()}
+            onPress={goBack}
             style={styles.backBtn}
           >
             <Ionicons name="arrow-back" size={24} color={colors.text} />

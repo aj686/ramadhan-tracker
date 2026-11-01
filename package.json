@@ -8,7 +8,9 @@
     "android": "cross-env NODE_ENV=development expo start --android",
     "ios": "cross-env NODE_ENV=development expo start --ios",
     "web": "cross-env NODE_ENV=development expo start --web",
-    "lint": "expo lint"
+    "lint": "expo lint",
+    "web:build": "expo export --platform web --clear && node --env-file-if-exists=.env scripts/web-postexport.js && workbox generateSW workbox-config.js && node scripts/web-postexport.js --verify",
+    "web:preview": "expo serve --port 5000"
   },
   "dependencies": {
     "@expo/metro-runtime": "~6.1.2",
@@ -55,7 +57,9 @@
     "cross-env": "^10.1.0",
     "eslint": "^9.25.0",
     "eslint-config-expo": "~10.0.0",
-    "typescript": "~5.9.2"
+    "typescript": "~5.9.2",
+    "workbox-cli": "^7.4.1",
+    "wrangler": "4.156.0"
   },
   "private": true
 }

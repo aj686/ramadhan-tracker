@@ -16,6 +16,7 @@ export default function TabsLayout() {
         headerShown: false,
         tabBarActiveTintColor: colors.tabActive,
         tabBarInactiveTintColor: colors.tabInactive,
+        tabBarLabelPosition: 'below-icon',
         tabBarLabelStyle: {
           fontSize: 11,
           fontWeight: '500',

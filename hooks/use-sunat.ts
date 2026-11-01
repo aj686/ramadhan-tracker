@@ -1,7 +1,7 @@
 import { useCallback } from 'react';
 import { supabase } from '@/services/supabase';
 import { useSunatStore } from '@/store/sunat-store';
-import { SunatLog, SunatType } from '@/types';
+import { FetchOptions, SunatLog, SunatType } from '@/types';
 
 // ── Generate sunat dates for 2026 ────────────────────────────────────────────
 
@@ -55,10 +55,12 @@ export const useSunat = (childId: string) => {
 
   const childLogs = logs[childId] || [];
 
-  const fetchSunatLogs = useCallback(async () => {
+  const fetchSunatLogs = useCallback(async ({ silent = false }: FetchOptions = {}) => {
     if (!childId) return;
-    setLoading(true);
-    setError(null);
+    if (!silent) {
+      setLoading(true);
+      setError(null);
+    }
     try {
       const { data, error: err } = await supabase
         .from('sunat_log')
@@ -68,16 +70,17 @@ export const useSunat = (childId: string) => {
       if (err) throw err;
       setLogs(childId, data as SunatLog[]);
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Failed to fetch sunat logs');
+      if (!silent) setError(e instanceof Error ? e.message : 'Failed to fetch sunat logs');
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   }, [childId, setLogs, setLoading, setError]);
 
   const toggleSunat = useCallback(
     async (date: string, type: SunatType) => {
-      if (!childId) return;
-      const existing = childLogs.find(
+      if (!childId) return { success: false, error: 'No child selected' };
+      const freshLogs = useSunatStore.getState().logs[childId] || [];
+      const existing = freshLogs.find(
         (l) => l.date === date && l.type === type,
       );
       const newCompleted = !existing?.completed;
@@ -103,16 +106,19 @@ export const useSunat = (childId: string) => {
           .single();
         if (err) throw err;
         upsertLog(childId, data as SunatLog);
+        return { success: true };
       } catch (e) {
         // revert
         if (existing) upsertLog(childId, existing);
         else {
           upsertLog(childId, { ...optimistic, completed: false });
         }
-        setError(e instanceof Error ? e.message : 'Failed to update');
+        const message = e instanceof Error ? e.message : 'Failed to update';
+        setError(message);
+        return { success: false, error: message };
       }
     },
-    [childId, childLogs, upsertLog, setError],
+    [childId, upsertLog, setError],
   );
 
   const isCompleted = useCallback(

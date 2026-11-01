@@ -6,12 +6,14 @@ import {
   StyleSheet,
   FlatList,
 } from 'react-native';
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useLocalSearchParams } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useGoBack } from '@/hooks/use-go-back';
 import { useTheme } from '@/hooks/use-theme';
 import { LearningCard } from '@/components/learning-card';
+import { PremiumGate } from '@/components/premium-gate';
 import { borderRadius, spacing, typography } from '@/constants/theme';
 import type { ModuleId, LearningItem, AllahName, Prophet } from '@/types';
 
@@ -21,12 +23,12 @@ import { prophets } from '@/data/prophets';
 import { transport } from '@/data/transport';
 import { countries } from '@/data/countries';
 
-const MODULE_META: Record<ModuleId, { title: string; emoji: string; color: string }> = {
-  animals:     { title: 'Animals',           emoji: '🐾', color: '#22C55E' },
-  allah_names: { title: '99 Names of Allah', emoji: '📿', color: '#8B5CF6' },
-  prophets:    { title: 'Prophets & Rasul',  emoji: '👳', color: '#F59E0B' },
-  transport:   { title: 'Transport',         emoji: '🚗', color: '#06B6D4' },
-  countries:   { title: 'Countries',         emoji: '🌍', color: '#3B82F6' },
+const MODULE_META: Record<ModuleId, { title: string; emoji: string; color: string; isPremium: boolean }> = {
+  animals:     { title: 'Animals',           emoji: '🐾', color: '#22C55E', isPremium: false },
+  allah_names: { title: '99 Names of Allah', emoji: '📿', color: '#8B5CF6', isPremium: false },
+  prophets:    { title: 'Prophets & Rasul',  emoji: '👳', color: '#F59E0B', isPremium: false },
+  transport:   { title: 'Transport',         emoji: '🚗', color: '#06B6D4', isPremium: true },
+  countries:   { title: 'Countries',         emoji: '🌍', color: '#3B82F6', isPremium: true },
 };
 
 function getModuleData(moduleId: ModuleId): (LearningItem | AllahName | Prophet)[] {
@@ -47,7 +49,7 @@ export default function ModuleScreen() {
 
   const { colors, isDark } = useTheme();
   const insets = useSafeAreaInsets();
-  const router = useRouter();
+  const goBack = useGoBack('/(tabs)/learn');
 
   if (!meta) {
     return (
@@ -56,6 +58,20 @@ export default function ModuleScreen() {
       </View>
     );
   }
+
+  const cardGrid = (
+    <FlatList
+      data={data}
+      numColumns={2}
+      keyExtractor={(item) => item.id}
+      columnWrapperStyle={styles.row}
+      contentContainerStyle={[styles.listContent, { paddingBottom: insets.bottom + spacing.xxxl }]}
+      showsVerticalScrollIndicator={false}
+      renderItem={({ item }) => (
+        <LearningCard moduleId={moduleId} item={item as any} />
+      )}
+    />
+  );
 
   return (
     <View style={styles.container}>
@@ -68,7 +84,7 @@ export default function ModuleScreen() {
 
       {/* Header */}
       <View style={[styles.header, { paddingTop: insets.top + spacing.sm }]}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
+        <TouchableOpacity onPress={goBack} style={styles.backBtn}>
           <Ionicons name="arrow-back" size={24} color={meta.color} />
         </TouchableOpacity>
         <View style={styles.headerCenter}>
@@ -82,17 +98,7 @@ export default function ModuleScreen() {
       </View>
 
       {/* Card Grid */}
-      <FlatList
-        data={data}
-        numColumns={2}
-        keyExtractor={(item) => item.id}
-        columnWrapperStyle={styles.row}
-        contentContainerStyle={[styles.listContent, { paddingBottom: insets.bottom + spacing.xxxl }]}
-        showsVerticalScrollIndicator={false}
-        renderItem={({ item }) => (
-          <LearningCard moduleId={moduleId} item={item as any} />
-        )}
-      />
+      {meta.isPremium ? <PremiumGate feature={meta.title}>{cardGrid}</PremiumGate> : cardGrid}
     </View>
   );
 }

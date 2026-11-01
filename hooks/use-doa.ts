@@ -1,7 +1,7 @@
 import { useCallback } from 'react';
 import { supabase } from '@/services/supabase';
 import { useDoaStore } from '@/store/doa-store';
-import { DoaLog, DoaKey } from '@/types';
+import { DoaLog, DoaKey, FetchOptions } from '@/types';
 
 export const DOA_ITEMS: { key: DoaKey; label: string; short: string }[] = [
   { key: 'doa_makan',        label: 'Makan',        short: 'Mkn'  },
@@ -27,10 +27,12 @@ export const useDoa = (childId: string) => {
 
   const childLogs = logs[childId] || [];
 
-  const fetchDoaLogs = useCallback(async () => {
+  const fetchDoaLogs = useCallback(async ({ silent = false }: FetchOptions = {}) => {
     if (!childId) return;
-    setLoading(true);
-    setError(null);
+    if (!silent) {
+      setLoading(true);
+      setError(null);
+    }
     try {
       const { data, error: err } = await supabase
         .from('doa_log')
@@ -40,49 +42,52 @@ export const useDoa = (childId: string) => {
       if (err) throw err;
       setLogs(childId, data as DoaLog[]);
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Failed to fetch doa logs');
+      if (!silent) setError(e instanceof Error ? e.message : 'Failed to fetch doa logs');
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   }, [childId, setLogs, setLoading, setError]);
 
   const updateDoa = useCallback(
     async (date: string, key: DoaKey, value: boolean) => {
-      if (!childId) return;
-      const existing = childLogs.find((l) => l.date === date);
-      const updated: DoaLog = {
+      if (!childId) return { success: false, error: 'No child selected' };
+
+      const freshLogs = useDoaStore.getState().logs[childId] || [];
+      const existing = freshLogs.find((l) => l.date === date);
+
+      const optimisticLog: DoaLog = {
+        ...EMPTY_DOA,
+        ...existing,
         id: existing?.id ?? `temp-${date}`,
         child_id: childId,
         date,
-        ...EMPTY_DOA,
-        ...existing,
         [key]: value,
       };
-      upsertLog(childId, updated);
+      upsertLog(childId, optimisticLog);
 
       try {
         const { data, error: err } = await supabase
           .from('doa_log')
           .upsert(
-            {
-              child_id: childId,
-              date,
-              ...EMPTY_DOA,
-              ...existing,
-              [key]: value,
-            },
+            { child_id: childId, date, [key]: value },
             { onConflict: 'child_id,date' },
           )
           .select()
           .single();
         if (err) throw err;
         upsertLog(childId, data as DoaLog);
+        return { success: true };
       } catch (e) {
-        if (existing) upsertLog(childId, existing);
-        setError(e instanceof Error ? e.message : 'Failed to update');
+        const latestLogs = useDoaStore.getState().logs[childId] || [];
+        const latest = latestLogs.find((l) => l.date === date) ?? optimisticLog;
+        upsertLog(childId, { ...latest, [key]: existing?.[key] ?? false });
+
+        const message = e instanceof Error ? e.message : 'Failed to update';
+        setError(message);
+        return { success: false, error: message };
       }
     },
-    [childId, childLogs, upsertLog, setError],
+    [childId, upsertLog, setError],
   );
 
   const getDoaForDate = useCallback(

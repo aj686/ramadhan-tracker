@@ -33,8 +33,19 @@
       "predictiveBackGestureEnabled": false,
       "package": "com.aj686.ramadantracker"
     },
+    "web": {
+      "bundler": "metro",
+      "output": "single",
+      "favicon": "./assets/images/favicon.png",
+      "themeColor": "#22C55E"
+    },
     "plugins": [
-      "expo-router",
+      [
+        "expo-router",
+        {
+          "sitemap": false
+        }
+      ],
       [
         "expo-notifications",
         {

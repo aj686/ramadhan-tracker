@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo } from 'react';
 import {
-  View, Text, StyleSheet, ScrollView, ActivityIndicator, Alert,
+  View, Text, StyleSheet, ScrollView, ActivityIndicator,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
@@ -9,12 +9,14 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '@/hooks/use-theme';
 import { useChildren } from '@/hooks/use-children';
 import { useSubscription } from '@/hooks/use-subscription';
+import { useRefetchOnForeground } from '@/hooks/use-refetch-on-foreground';
+import { Alert } from '@/services/alert';
 import { PremiumGate } from '@/components/premium-gate';
 import { supabase } from '@/services/supabase';
 import { useFastingStore } from '@/store/fasting-store';
 import { usePrayerStore } from '@/store/prayer-store';
 import { borderRadius, spacing, typography } from '@/constants/theme';
-import { FastingLog, PrayerLog } from '@/types';
+import { FastingLog, FetchOptions, PrayerLog } from '@/types';
 
 // Score: full=10, half=5, each prayer=2 (max/day = 20)
 function computeScore(fasting: FastingLog[], prayer: PrayerLog[]): number {
@@ -48,29 +50,34 @@ export default function LeaderboardScreen() {
   const [loading, setLoading] = React.useState(false);
 
   // Fetch all children's data
-  useEffect(() => {
+  const fetchAll = async ({ silent = false }: FetchOptions = {}) => {
     if (!isPremium || children.length === 0) return;
-    setLoading(true);
-    const fetchAll = async () => {
-      try {
-        await Promise.all(
-          children.map(async (child) => {
-            const [{ data: fl }, { data: pl }] = await Promise.all([
-              supabase.from('fasting_log').select('*').eq('child_id', child.id),
-              supabase.from('prayer_log').select('*').eq('child_id', child.id),
-            ]);
-            if (fl) setFastingLogs(child.id, fl as FastingLog[]);
-            if (pl) setPrayerLogs(child.id, pl as PrayerLog[]);
-          }),
-        );
-      } catch {
-        Alert.alert('Error', 'Could not load leaderboard data');
-      } finally {
-        setLoading(false);
-      }
-    };
+    if (!silent) setLoading(true);
+    try {
+      await Promise.all(
+        children.map(async (child) => {
+          const [{ data: fl }, { data: pl }] = await Promise.all([
+            supabase.from('fasting_log').select('*').eq('child_id', child.id),
+            supabase.from('prayer_log').select('*').eq('child_id', child.id),
+          ]);
+          if (fl) setFastingLogs(child.id, fl as FastingLog[]);
+          if (pl) setPrayerLogs(child.id, pl as PrayerLog[]);
+        }),
+      );
+    } catch {
+      if (!silent) Alert.alert('Error', 'Could not load leaderboard data');
+    } finally {
+      if (!silent) setLoading(false);
+    }
+  };
+
+  useEffect(() => {
     fetchAll();
   }, [isPremium, children.length]);
+
+  useRefetchOnForeground(() => {
+    fetchAll({ silent: true });
+  });
 
   const ranked = useMemo(() => {
     return children

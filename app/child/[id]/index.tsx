@@ -5,6 +5,8 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useGoBack } from '@/hooks/use-go-back';
+import { useRefetchOnForeground } from '@/hooks/use-refetch-on-foreground';
 import { useTheme } from '@/hooks/use-theme';
 import { useChildren } from '@/hooks/use-children';
 import { useFasting } from '@/hooks/use-fasting';
@@ -22,6 +24,7 @@ export default function ChildDashboard() {
   const { colors, isDark } = useTheme();
   const insets = useSafeAreaInsets();
   const router = useRouter();
+  const goBack = useGoBack('/(tabs)');
   const { children } = useChildren();
   const { fetchFastingLogs, calculateStats, isLoading: fastingLoading } = useFasting(id);
   const { rewards, fetchRewards } = useRewards();
@@ -35,6 +38,11 @@ export default function ChildDashboard() {
     fetchRewards();
     fetchPrayerLogs();
   }, [fetchFastingLogs, fetchRewards, fetchPrayerLogs]);
+
+  useRefetchOnForeground(() => {
+    fetchFastingLogs({ silent: true });
+    fetchPrayerLogs({ silent: true });
+  });
 
   const stats = calculateStats();
   const totalPrayers = getTotalPrayerCount();
@@ -68,7 +76,7 @@ export default function ChildDashboard() {
 
       {/* Header */}
       <View style={[styles.header, { paddingTop: insets.top + spacing.md }]}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
+        <TouchableOpacity onPress={goBack} style={styles.backBtn}>
           <Ionicons name="arrow-back" size={24} color={colors.primary} />
         </TouchableOpacity>
         <View style={styles.headerCenter}>

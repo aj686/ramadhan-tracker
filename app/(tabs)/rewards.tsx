@@ -5,7 +5,6 @@ import {
   TouchableOpacity,
   StyleSheet,
   TextInput,
-  Alert,
   ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
@@ -18,6 +17,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '@/hooks/use-theme';
 import { useRewards } from '@/hooks/use-rewards';
+import { Alert } from '@/services/alert';
 import { borderRadius, spacing, typography } from '@/constants/theme';
 import { RewardType } from '@/types';
 
@@ -463,6 +463,7 @@ const styles = StyleSheet.create({
   },
   dropdownMenu: {
     width: '100%',
+    maxWidth: 420,
     borderRadius: borderRadius.xl,
     overflow: 'hidden',
     borderWidth: 1,

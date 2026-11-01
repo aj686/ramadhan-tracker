@@ -1,14 +1,15 @@
 import { borderRadius, spacing, typography } from '@/constants/theme';
 import { useAuth } from '@/hooks/use-auth';
+import { useGoBack } from '@/hooks/use-go-back';
 import { useTheme } from '@/hooks/use-theme';
+import { Alert } from '@/services/alert';
 import { Ionicons } from '@expo/vector-icons';
 import { BlurView } from 'expo-blur';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import {
     ActivityIndicator,
-    Alert,
     Image,
     KeyboardAvoidingView,
     Platform,
@@ -30,8 +31,12 @@ export default function RegisterScreen() {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const { register, isLoading } = useAuth();
+  const goBack = useGoBack('/(auth)/login');
+  const passwordInputRef = useRef<TextInput>(null);
+  const confirmPasswordInputRef = useRef<TextInput>(null);
 
   const handleRegister = async () => {
+    if (isLoading) return;
     if (!email.trim() || !password.trim()) {
       Alert.alert('Error', 'Please enter email and password');
       return;
@@ -100,6 +105,9 @@ export default function RegisterScreen() {
                       keyboardType="email-address"
                       autoCapitalize="none"
                       autoCorrect={false}
+                      autoComplete="email"
+                      returnKeyType="next"
+                      onSubmitEditing={() => passwordInputRef.current?.focus()}
                       editable={!isLoading}
                     />
                   </View>
@@ -107,12 +115,16 @@ export default function RegisterScreen() {
                   <View style={[styles.inputContainer, { backgroundColor: colors.primaryMuted }]}>
                     <Ionicons name="lock-closed-outline" size={20} color={colors.textMuted} />
                     <TextInput
+                      ref={passwordInputRef}
                       style={[styles.input, { color: colors.text }]}
                       placeholder="Password"
                       placeholderTextColor={colors.textMuted}
                       value={password}
                       onChangeText={setPassword}
                       secureTextEntry={!showPassword}
+                      autoComplete="new-password"
+                      returnKeyType="next"
+                      onSubmitEditing={() => confirmPasswordInputRef.current?.focus()}
                       editable={!isLoading}
                     />
                     <TouchableOpacity onPress={() => setShowPassword(!showPassword)}>
@@ -127,12 +139,16 @@ export default function RegisterScreen() {
                   <View style={[styles.inputContainer, { backgroundColor: colors.primaryMuted }]}>
                     <Ionicons name="lock-closed-outline" size={20} color={colors.textMuted} />
                     <TextInput
+                      ref={confirmPasswordInputRef}
                       style={[styles.input, { color: colors.text }]}
                       placeholder="Confirm Password"
                       placeholderTextColor={colors.textMuted}
                       value={confirmPassword}
                       onChangeText={setConfirmPassword}
                       secureTextEntry={!showPassword}
+                      autoComplete="new-password"
+                      returnKeyType="go"
+                      onSubmitEditing={handleRegister}
                       editable={!isLoading}
                     />
                   </View>
@@ -159,7 +175,7 @@ export default function RegisterScreen() {
 
           {/* Login Link */}
           <TouchableOpacity
-            onPress={() => router.back()}
+            onPress={goBack}
             disabled={isLoading}
             style={styles.linkContainer}
           >

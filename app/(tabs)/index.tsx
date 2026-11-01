@@ -5,7 +5,6 @@ import {
   TouchableOpacity,
   StyleSheet,
   FlatList,
-  Alert,
   ActivityIndicator,
   TextInput,
   Modal,
@@ -21,6 +20,8 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '@/hooks/use-theme';
 import { useAuth } from '@/hooks/use-auth';
 import { useChildren } from '@/hooks/use-children';
+import { useRefetchOnForeground } from '@/hooks/use-refetch-on-foreground';
+import { Alert } from '@/services/alert';
 import { borderRadius, spacing, typography } from '@/constants/theme';
 import { Child } from '@/types';
 
@@ -45,6 +46,10 @@ export default function HomeScreen() {
   useEffect(() => {
     fetchChildren();
   }, [fetchChildren]);
+
+  useRefetchOnForeground(() => {
+    fetchChildren({ silent: true });
+  });
 
   const handleAddChild = async () => {
     if (!newChildName.trim()) {
@@ -379,6 +384,7 @@ const styles = StyleSheet.create({
   },
   modalCard: {
     width: '100%',
+    maxWidth: 420,
     borderRadius: borderRadius.xxl,
     overflow: 'hidden',
     borderWidth: 1,

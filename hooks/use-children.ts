@@ -3,7 +3,7 @@ import { supabase } from '@/services/supabase';
 import { useChildrenStore } from '@/store/children-store';
 import { useAuthStore } from '@/store/auth-store';
 import { useSubscriptionStore } from '@/store/subscription-store';
-import { Child, CreateChildInput, UpdateChildInput } from '@/types';
+import { Child, CreateChildInput, FetchOptions, UpdateChildInput } from '@/types';
 
 // Free tier: 2 children. Premium: unlimited.
 const MAX_CHILDREN_FREE = 2;
@@ -25,11 +25,13 @@ export const useChildren = () => {
 
   const maxChildren = isPremium ? Infinity : MAX_CHILDREN_FREE;
 
-  const fetchChildren = useCallback(async () => {
+  const fetchChildren = useCallback(async ({ silent = false }: FetchOptions = {}) => {
     if (!user) return;
 
-    setLoading(true);
-    setError(null);
+    if (!silent) {
+      setLoading(true);
+      setError(null);
+    }
 
     try {
       const { data, error: fetchError } = await supabase
@@ -40,12 +42,16 @@ export const useChildren = () => {
 
       if (fetchError) throw fetchError;
 
-      setChildren(data as Child[]);
+      if (useAuthStore.getState().user?.id === user.id) {
+        setChildren(data as Child[]);
+      }
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to fetch children';
-      setError(message);
+      if (!silent) {
+        const message = err instanceof Error ? err.message : 'Failed to fetch children';
+        setError(message);
+      }
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   }, [user, setChildren, setLoading, setError]);
 

@@ -1,11 +1,10 @@
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import {
   View,
   Text,
   TextInput,
   TouchableOpacity,
   StyleSheet,
-  Alert,
   KeyboardAvoidingView,
   Platform,
   ActivityIndicator,
@@ -18,6 +17,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuth } from '@/hooks/use-auth';
 import { useTheme } from '@/hooks/use-theme';
+import { Alert } from '@/services/alert';
 import { borderRadius, spacing, typography } from '@/constants/theme';
 
 export default function LoginScreen() {
@@ -28,8 +28,10 @@ export default function LoginScreen() {
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const { login, isLoading } = useAuth();
+  const passwordInputRef = useRef<TextInput>(null);
 
   const handleLogin = async () => {
+    if (isLoading) return;
     if (!email.trim() || !password.trim()) {
       Alert.alert('Error', 'Please enter email and password');
       return;
@@ -86,6 +88,9 @@ export default function LoginScreen() {
                       keyboardType="email-address"
                       autoCapitalize="none"
                       autoCorrect={false}
+                      autoComplete="email"
+                      returnKeyType="next"
+                      onSubmitEditing={() => passwordInputRef.current?.focus()}
                       editable={!isLoading}
                     />
                   </View>
@@ -93,12 +98,16 @@ export default function LoginScreen() {
                   <View style={[styles.inputContainer, { backgroundColor: colors.primaryMuted }]}>
                     <Ionicons name="lock-closed-outline" size={20} color={colors.textMuted} />
                     <TextInput
+                      ref={passwordInputRef}
                       style={[styles.input, { color: colors.text }]}
                       placeholder="Password"
                       placeholderTextColor={colors.textMuted}
                       value={password}
                       onChangeText={setPassword}
                       secureTextEntry={!showPassword}
+                      autoComplete="current-password"
+                      returnKeyType="go"
+                      onSubmitEditing={handleLogin}
                       editable={!isLoading}
                     />
                     <TouchableOpacity onPress={() => setShowPassword(!showPassword)}>

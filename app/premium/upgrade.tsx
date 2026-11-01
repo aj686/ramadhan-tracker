@@ -1,12 +1,12 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import {
   View, Text, TouchableOpacity, StyleSheet, ScrollView,
 } from 'react-native';
-import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useGoBack } from '@/hooks/use-go-back';
 import { useTheme } from '@/hooks/use-theme';
 import { useSubscription } from '@/hooks/use-subscription';
 import { COMING_SOON_LABEL, PLANS } from '@/services/toyyibpay';
@@ -24,14 +24,15 @@ const FEATURES = [
 export default function UpgradeScreen() {
   const { colors, isDark } = useTheme();
   const insets = useSafeAreaInsets();
-  const router = useRouter();
+  const goBack = useGoBack('/(tabs)');
   const { isPremium } = useSubscription();
 
   // If user is already premium, go back
-  if (isPremium) {
-    router.back();
-    return null;
-  }
+  useEffect(() => {
+    if (isPremium) goBack();
+  }, [isPremium, goBack]);
+
+  if (isPremium) return null;
 
   return (
     <View style={styles.container}>
@@ -42,7 +43,7 @@ export default function UpgradeScreen() {
 
       {/* Header */}
       <View style={[styles.header, { paddingTop: insets.top + spacing.md }]}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
+        <TouchableOpacity onPress={goBack} style={styles.backBtn}>
           <Ionicons name="close" size={24} color={colors.text} />
         </TouchableOpacity>
         <Text style={[styles.headerTitle, { color: colors.text }]}>Premium</Text>

@@ -1,5 +1,6 @@
 import { useMemo } from 'react';
 import { usePrayerStore } from '@/store/prayer-store';
+import { parseDateKey } from '@/services/dates';
 
 /**
  * Calculates prayer streak for a child.
@@ -50,7 +51,7 @@ export const useStreak = (childId: string) => {
     })();
 
     let current = 0;
-    let checkDate = new Date(todayStr);
+    let checkDate = parseDateKey(todayStr);
     while (true) {
       const mm = String(checkDate.getMonth() + 1).padStart(2, '0');
       const dd = String(checkDate.getDate()).padStart(2, '0');

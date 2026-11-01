@@ -15,7 +15,7 @@ and their children (ages 6–15). Freemium: AdMob + RM9.90/mo or RM49.90/yr subs
 | Backend | Supabase (auth + Postgres + RLS + Edge Functions) |
 | State | Zustand 5 |
 | Payments | ToyyibPay (Malaysian gateway) via Supabase Edge Functions |
-| Platform | Android primary, iOS secondary |
+| Platform | Android primary, iOS secondary, web as a PWA (Cloudflare Workers static assets) |
 | Android package | `com.aj686.ramadantracker` |
 | Branch | `master` (no PR workflow — commit direct) |
 
@@ -48,19 +48,24 @@ app/
   child/[id]/    index (dashboard) · fasting · prayer · sunat · quran · doa
   learn/[module] card grid per learning module
   premium/       upgrade (Coming Soon preview)
+  +not-found     redirects unknown URLs to /
 hooks/           use-{auth,children,fasting,prayer,rewards,theme,subscription,
-                       sunat,quran,doa,streak,speech}
+                       sunat,quran,doa,streak,speech,go-back,refetch-on-foreground}
 store/           {auth,children,fasting,prayer,rewards,subscription,theme,
                   sunat,quran,doa}-store
 components/      glass-card · category-chip · progress-bar · tracker-card ·
                  premium-gate · learning-card · letter-highlight
 data/            animals(30) allah-names(99) prophets(25) transport(25) countries(30)
-services/        supabase.ts · toyyibpay.ts
+services/        supabase.ts · toyyibpay.ts · alert.ts · alert.web.ts · save-error.ts · dates.ts
 supabase/        migrations/00{1..4}_*.sql · functions/{create-payment,
                  payment-callback,payment-return}
 constants/       theme.ts
 types/           index.ts
+public/          web only: index.html · manifest.json · register-sw.js · _headers · icons/
+scripts/         web-postexport.js (build step + build check) · sw-kill.js (service worker recovery)
 ```
+
+Web-only config at the root: `workbox-config.js`, `wrangler.jsonc`.
 
 **Dead code — do not extend, do not import:** `screens/` and `navigation/` are leftovers
 from the pre-Expo-Router build (Phase 0). All live UI is under `app/`. Flag them for deletion
@@ -99,6 +104,39 @@ try   { const { data } = await supabase.from('…').upsert(…); upsertLog(child
 catch { upsertLog(childId, existing); }            // 3. revert
 ```
 
+### Two devices on one account
+Prayer and Doa rows hold several ticks, so a stale device must never write the whole row.
+Send only the changed column as a single object, and keep the optimistic row separate:
+```ts
+.upsert({ child_id, date, [prayer]: completed }, { onConflict: 'child_id,date' })
+```
+On failure, revert only that column, including on a brand-new date, and show `alertNotSaved()`.
+Screens that fetch on open also call `useRefetchOnForeground` with `{ silent: true }`, which
+skips `setLoading`. Never add it to Rewards: a refetch overwrites a half-typed form.
+
+### Auth events
+- `SIGNED_OUT` always clears the user and every store (`clearUserData` in `hooks/use-auth.ts`).
+  supabase-js only fires it after removing the session: a real sign-out, a revoked session,
+  or another tab.
+- A network failure never fires `SIGNED_OUT` and leaves the session in storage. If `getSession()`
+  or `INITIAL_SESSION` returns null but `readStoredAuthUser()` finds a user, the failure was
+  network-only, so stay signed in.
+- Logout uses `signOut({ scope: 'local' })`, so other devices stay logged in. If it fails, remove
+  the stored session with `clearStoredAuthSession()` and tell the user.
+- Skip `setUser` when id and email match. Returning to a browser tab fires `SIGNED_IN`, and a
+  new `user` object refires every fetch that depends on it.
+
+### Web and shared code
+- `window` and `document` only in `*.web.ts` files and `public/`. Shared code still runs on Android.
+- Import `Alert` from `@/services/alert`. On `react-native-web`, `Alert.alert()` does nothing.
+- Back buttons use `useGoBack(fallback)`. After a browser refresh `router.back()` has nowhere to go.
+- Date keys parse with `parseDateKey` from `services/dates.ts`. `new Date('2026-03-01')` is UTC
+  and shows the previous day west of UTC.
+- Metro caches the manifest inlined from `app.json`, so `web:build` always passes `--clear`. Pass it
+  to any other export after editing `app.json`.
+- Service worker caching is for app files only. Never add `runtimeCaching` or cache a Supabase
+  response: children's data must not stay in a browser cache.
+
 ### Supabase idioms
 - Upsert needs the unique-constraint columns: `{ onConflict: 'child_id,date' }`
 - `PGRST116` means "no rows" — seed defaults, don't throw.
@@ -131,10 +169,20 @@ npm start            # expo start (NODE_ENV=development via cross-env)
 npm run android      # expo start --android
 npm run lint         # expo lint
 npx tsc --noEmit     # typecheck — run before declaring work done
+npm run web:build    # web export, CSP + build ID, Workbox, build check (needs Node 22)
+npm run web:preview  # serve dist on port 5000 (no _headers, no SPA fallback)
 ```
 
 No test suite exists. "Verified" means it typechecks, lints, and you ran the screen — say
 plainly which of those you actually did.
+
+**Releases.** Every push to `master` publishes OTA to production Android (`eas-update.yml`,
+which skips pushes that change only web-only files or `**.md`). Once Cloudflare Workers Builds
+is connected to this repo, **every push to `master` also deploys the web app.** Build command
+`npm run web:build`, deploy command `npx wrangler deploy`, `NODE_VERSION=22`. The Worker name in
+`wrangler.jsonc` must stay `mylittlemuslim`, because a mismatch with the Cloudflare project name
+fails the build. Old Android code saves whole rows and can erase ticks made on web, so shared
+fixes must reach Android before web goes live.
 
 ---
 
@@ -180,6 +228,16 @@ The `EXPO_PUBLIC_` prefix means **the value ships inside the app bundle and is r
 anyone who downloads the APK.** Only the Supabase *anon* key may ever carry that prefix.
 Never prefix a service role key, a ToyyibPay key, or any server secret with `EXPO_PUBLIC_`.
 
+The web build has no `.env` on Cloudflare, so the same two client values are also set as
+Cloudflare build variables. Write only placeholders for them in this repo:
+```
+EXPO_PUBLIC_SUPABASE_URL=<your-project-url>
+EXPO_PUBLIC_SUPABASE_ANON_KEY=<your-anon-key>
+```
+`scripts/web-postexport.js` fails the build if either is unset, without printing them.
+`SUPABASE_SERVICE_ROLE_KEY` must never be set as a Cloudflare build variable, and neither must a
+ToyyibPay key: the web build needs only these two values.
+
 ### 5.4 Database access must stay behind RLS
 
 Every child-scoped table (`children`, `fasting_log`, `prayer_log`, `rewards`, `sunat_log`,
@@ -223,8 +281,8 @@ payment is un-stubbed (the flow in [Plans.md](Plans.md) §6.1 needs it).
 - **No silent network egress.** Don't POST this project's code, schema, or data to any
   external service, paste site, or API. `npm install` and documented Supabase/EAS calls are fine.
 - **Ask before deploying.** `supabase functions deploy`, `supabase secrets set`,
-  `supabase db push`, `eas build`, `eas submit`, and anything touching the Play Store are the
-  user's call. Print the exact command for them to run; don't run it unprompted.
+  `supabase db push`, `eas build`, `eas submit`, any `wrangler` command, and anything touching
+  the Play Store or Cloudflare are the user's call. Print the exact command for them to run; don't run it unprompted.
 - **Ask before destructive SQL.** No `drop`, `truncate`, or unguarded `delete`/`update`
   against the live project. Migrations are forward-only, additive, numbered files in
   `supabase/migrations/`.
@@ -250,14 +308,15 @@ unlimited premium · Puasa Ramadhan 30-day tracker · Solat 5-waktu year view
 light/dark/system theme toggle · premium gate UI · Premium screen (shows Akan Datang;
 payment is not open).
 
-Phases 1–5 in [Plans.md](Plans.md) are code-complete.
+Phases 1–6 in [Plans.md](Plans.md) are code-complete.
 
 ### Blocked on deployment, not on code
 | Item | Blocker |
 |---|---|
 | Sunat / Quran / Doa trackers | `sunat_log`, `quran_log`, `doa_log` tables not created in Supabase. SQL sits inline in Plans.md §8 — **has no migration file yet**; should become `supabase/migrations/005_phase2_logs.sql`. |
 | ToyyibPay payment | Edge Functions not deployed; secrets not set; callback not hardened (§5.5); client still stubbed. |
-| Email verification | `verify.tsx` + `verifyOtp`/`resendVerification` built; Supabase email confirmation is OFF. Needs `{{ .Token }}` template + custom SMTP. |
+| Email verification | `verify.tsx` + `verifyOtp`/`resendVerification` built; Supabase email confirmation is OFF. Needs `{{ .Token }}` template + custom SMTP. `register.tsx` passes the parent's email as a route param, which on web lands in the URL, browser history and host logs: move it into `auth-store` before turning verification on. |
+| Web (PWA) | Code complete, not deployed. Cloudflare Workers Builds not connected; build variables not set; the live address has not been tested yet. Android must get the shared fixes first (§4). |
 
 ### Not built
 Language toggle (EN/MS) · AdMob ads · push notifications (prayer reminders) ·
